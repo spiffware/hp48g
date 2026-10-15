@@ -9,7 +9,7 @@ from hp48g.engine import Calculator
 @pytest.fixture(scope='module')
 def window():
     app=QApplication.instance() or QApplication([]); app.setStyleSheet(STYLE)
-    w=MainWindow(); w.show(); app.processEvents()
+    w=MainWindow(asynchronous=False,interactive=False); w.show(); app.processEvents()
     yield w
     w.close()
 
@@ -41,7 +41,7 @@ def test_statistics_and_units(window):
 def test_second_function_is_plotted(window):
     import numpy as np
     plot=window.plot
-    plot.mode.setCurrentText('Function')
+    plot.mode.setCurrentText('Function'); plot.angles.setCurrentText('RAD')
     plot.expr.setText('sin(x)'); plot.second.setText('cos(x)')
     plot.draw()
     curves={line.get_label():line for line in plot.figure.axes[0].lines}
@@ -76,7 +76,7 @@ def test_function_redraw_preserves_custom_axes(window):
     assert plot.figure.axes[0].get_ylim()==pytest.approx((-2,3))
     plot.mode.setCurrentText('Polar'); plot.draw()
     plot.mode.setCurrentText('Function'); plot.draw()
-    assert plot.figure.axes[0].get_ylim()==pytest.approx((-10,10))
+    assert plot.figure.axes[0].get_ylim()==pytest.approx((-2,3))
 
 
 def test_collapsed_window_fits_calculator_frame(window):

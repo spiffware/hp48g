@@ -11,6 +11,7 @@ dependencies = ["PySide6>=6.6,<7", "sympy>=1.12,<2", "numpy>=1.26,<3", "scipy>=1
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+packaging = ["pyinstaller>=6.16,<7"]
 
 [project.scripts]
 hp48g = "hp48g.app:main"
@@ -20,3 +21,6 @@ include = ["hp48g*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+hp48g = ["native/x48ng/*.c", "native/x48ng/*.h", "native/x48ng/LICENSE", "native/x48ng/AUTHORS", "native/x48ng/UPSTREAM.md", "native/x48ng/core/*.c", "native/x48ng/core/*.h", "native/x48ng/ui4x/src/*.h"]

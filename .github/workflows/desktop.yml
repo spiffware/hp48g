@@ -1,0 +1,44 @@
+name: Desktop builds and compatibility
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Linux Qt dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0
+      - name: Python dependencies
+        run: python -m pip install -e ".[dev,packaging]"
+      - name: Windows C compiler
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CC=gcc" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Download ROM fixture
+        run: python scripts/download_test_roms.py
+      - name: Tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+          HP48G_TEST_ROM: .rom/rom
+        run: python -m pytest -q
+      - name: Build standalone app
+        run: python scripts/build_desktop.py --archive
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HP48G-${{ runner.os }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.tar.gz
