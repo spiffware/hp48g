@@ -33,9 +33,36 @@ After installation, `hp48g` is also available as an application command. In this
 
 The tested dependency versions are recorded in `requirements-lock.txt` (macOS, Python 3.12).
 
-![Application preview](docs/preview.png)
+## Original HP calculator
+
+The original-mode face follows the HP 48GX layout, with a charcoal case,
+recessed green LCD, blended Hewlett-Packard logo, and purple/teal shift legends.
+Shifted labels fit within the same key sizes. The complete calculator fits the
+window without scrollbars, with a more compact layout on smaller screens.
+
+![Current original-ROM calculator with HP-style face and LCD menus](docs/original-calculator.png)
+
+Click the LCD's six bottom menu labels or use the A–F keys. Framed choice menus,
+including SOLVE, SYMBOLIC, TIME, STAT and UserRPL CHOOSE, also support clicking
+an option to select and confirm it; use the mouse wheel to browse longer lists.
+**Source entry & file transfer** expands the editor below the keypad, and its
+open/closed state persists across launches.
+
+On macOS, the application menu is named **HP-48GX**. The **File** menu provides
+**Open another ROM profile…**, **Use local HP48 ROM…**, **Download ROM revision…**,
+**Load HP source…**, and **Keyboard help**, in that order. Saved profiles remain
+in the existing `HP48G Desktop` application-data directory.
+
+For expanded memory, choose **Tools → Memory cards → Expand working memory to
+256 KB** or **Enable 4 MB storage card**. These GX settings and card contents
+persist across launches. The card provides 3,968 KB of ROM-accessible object
+storage, separate from the 256 KB working memory. Expansion retains existing
+card objects and creates a recovery backup. See the [memory setup guide](docs/original-calculator.md#setup)
+for capacity limits, backups and storage examples.
 
 ## Using the enhanced Python workspace
+
+![Current enhanced Python workspace with symbolic results and two plotted functions](docs/preview.png)
 
 Enter `2 3 +` and press Enter, or enter each number separately and click `+`. Empty Enter duplicates the top of the stack. Input can contain a whole RPN sequence; operations consume their arguments from the stack in left-to-right order. Failed or cancelled sequences leave stack, variables, and modes unchanged. Undo retains up to 100 prior states. Calculations run in cancellable background processes with a 30-second timeout. Click **Cancel calculation** to stop a calculation while keeping its input.
 
@@ -101,8 +128,6 @@ has been cross-compiled. Native Windows and Linux package/runtime verification
 are provided for by the CI workflow and remain required before declaring those releases verified.
 The separate x48ng core retains its GPL license; see
 [provenance and modifications](hp48g/native/x48ng/UPSTREAM.md).
-
-In original GX mode, **Tools → Memory cards → Expand working memory to 256 KB** combines built-in RAM and port 1. **Enable 4 MB storage card** grows port 2 without clearing its existing objects. Memory configuration and contents persist across launches in the profile checkpoint. The card is separate object storage, with 3,968 KB accessible through the original ROM; it does not increase calculation working space. See the [memory setup guide](docs/original-calculator.md#setup).
 
 Original mode also includes ROM beep/alarm audio, rolling and named backups,
 clipboard transfer, a source editor/debugger, a memory browser, and mouse-driven
