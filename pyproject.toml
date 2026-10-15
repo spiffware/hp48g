@@ -23,4 +23,4 @@ include = ["hp48g*"]
 testpaths = ["tests"]
 
 [tool.setuptools.package-data]
-hp48g = ["native/x48ng/*.c", "native/x48ng/*.h", "native/x48ng/LICENSE", "native/x48ng/AUTHORS", "native/x48ng/UPSTREAM.md", "native/x48ng/core/*.c", "native/x48ng/core/*.h", "native/x48ng/ui4x/src/*.h"]
+hp48g = ["assets/*.png", "native/x48ng/*.c", "native/x48ng/*.h", "native/x48ng/LICENSE", "native/x48ng/AUTHORS", "native/x48ng/UPSTREAM.md", "native/x48ng/core/*.c", "native/x48ng/core/*.h", "native/x48ng/ui4x/src/*.h"]

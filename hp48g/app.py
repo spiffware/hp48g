@@ -516,7 +516,9 @@ def main():
         sys.argv.remove('--setup-rom')
         from .rom_setup import main as setup_main
         return setup_main()
-    app=QApplication(sys.argv); app.setApplicationName('HP48G Desktop'); app.setStyle('Fusion'); app.setStyleSheet(STYLE)
+    from .platform_ui import DISPLAY_NAME,prepare_application_name
+    prepare_application_name()
+    app=QApplication(sys.argv); app.setApplicationName('HP48G Desktop'); app.setApplicationDisplayName(DISPLAY_NAME); app.setStyle('Fusion'); app.setStyleSheet(STYLE)
     auto_path=Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))/'workspace.json'
     if '--rom' in sys.argv:
         from .rom_window import RomWindow

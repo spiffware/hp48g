@@ -213,6 +213,13 @@ class RomSession(QObject):
         except Exception as exc:finish(error=str(exc))
 
 
+    def rescan_cards(self,callback):
+        """Power-cycle the guest so its ROM discovers changed card capacity."""
+        self.tap(39)  # Right shift + ON is OFF, then ON preserves the stack.
+        QTimer.singleShot(160,lambda:self.tap(44) if not self.closing else None)
+        QTimer.singleShot(400,lambda:self.tap(44) if not self.closing else None)
+        QTimer.singleShot(750,lambda:self.query('PINIT 0' if self.model=='GX' else '0',callback) if not self.closing else None)
+
     def save(self, callback=None, destination=None):
         if self.saving:
             if callback:callback(False)

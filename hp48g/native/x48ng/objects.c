@@ -29,7 +29,7 @@ void pop_native_object(void) {
 long push_native_object(const unsigned char *nibbles,size_t size) {
     long a=read_nibbles(TEMPTOP,5),b=read_nibbles(RSKTOP,5),c=read_nibbles(DSKTOP,5);
     long total=(long)size+6;
-    if(saturn.mem_cntl[1].config[0]!=(opt_gx?0x80000:0x70000) || a<(opt_gx?0x80000:0x70000) || b<a || c<b || c>0x100000 || size>0x40000 || b+total+5>c) { fprintf(stderr,"Import unavailable: base=%lx temp=%lx rstack=%lx dstack=%lx size=%zu\n",saturn.mem_cntl[1].config[0],a,b,c,size); return 0; }
+    if(saturn.mem_cntl[1].config[0]!=(opt_gx?0x80000:0x70000) || a<(opt_gx?0x80000:0x70000) || b<a || c<b || c>0x100000 || size>0x90000 || b+total+5>c) { fprintf(stderr,"Import unavailable: base=%lx temp=%lx rstack=%lx dstack=%lx size=%zu\n",saturn.mem_cntl[1].config[0],a,b,c,size); return 0; }
     for(long i=b-a;i>0;i--) bus_write_nibble(a+total+i-1,bus_fetch_nibble(a+i-1));
     write5(TEMPTOP,a+total);write5(RSKTOP,b+total);write5(a+total-5,total);
     bus_write_nibble(a,0);

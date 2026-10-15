@@ -10,7 +10,7 @@ ESCAPES = ['<)','x-','.V','v/','.S','GS','|>','pi','.d','<=','>=','=/','Ga','->'
 ESCAPE_CODES = {v:i+128 for i,v in enumerate(ESCAPES)}
 ESCAPE_CODES.update({'<<':171,'>>':187,'^o':176,'Gm':181})
 REVERSE_SPECIAL = {v:k for k,v in SPECIAL.items()}
-MAX_NIBBLES=262144
+MAX_NIBBLES=589824  # Largest supported heap: SX with two merged 128 KB cards.
 
 
 def encode_text(source,transfer_escapes=True):

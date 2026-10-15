@@ -9,7 +9,7 @@ The enhanced Python workspace keeps its own stack and exact symbolic arithmetic.
 
 ## Setup
 
-Choose **Original calculator → Download ROM revision…**, or select a local
+Choose **File → Download ROM revision…**, or select a local
 supported ROM/raw ZIP. Downloads come from HPcalc's
 [emulator archive](https://www.hpcalc.org/hp48/pc/emulators/) and are checked
 against pinned SHA-256 digests. ROMs are never included in app packages.
@@ -29,13 +29,27 @@ python -m hp48g --rom --rom-directory .rom
 
 On first boot, press **ON** if the screen is blank, then **F (NO)** at the ROM's “Try To Recover Memory?” prompt.
 A new GX profile has 128 KB main RAM; SX has 32 KB. Both begin with two
-virtual 128 KB RAM cards. Memory cards can be changed through Tools.
+virtual 128 KB RAM cards. In **Tools → Memory cards**, choose **Expand working memory to 256 KB** to merge the GX's 128 KB port 1 card into main RAM. Choose **Enable 4 MB storage card** to grow port 2 while retaining existing card objects. The summary shows the current working-memory capacity, free memory and storage-card capacity.
+
+Both choices and all RAM/card contents persist in the profile's `calculator.hp48state`, including across application restarts. Expansion creates a recovery backup and saves immediately; card resizing restarts the core with the updated checkpoint. Later content changes are saved automatically every minute and on normal exit. Reopening the app restores the saved cards, rather than creating blank replacements. Selecting the 4 MB option again does not erase or reset its contents.
+
+Working memory is shared by programs, variables, the stack and temporary results; usable free space is less than 256 KB. The 4 MB card is separate storage (ROM-accessible ports 2–32, 3,968 KB usable), not additional working memory. For example, `123 :2:VALUE STO` stores an object and `:2:VALUE RCL` recalls it; use other ports through 32 for additional storage. Desktop inspection operations also need temporary working space. These GX shortcuts do not apply to SX profiles; use the card controls for SX's supported capacities.
 
 ## Using the calculator
 
+The calculator face uses an HP-style charcoal case, green LCD, cream menu keys,
+and purple/teal shift legends. **Source entry & file transfer** below the keypad
+expands the text editor and transfer buttons; its open/closed setting is saved.
+Loading or pasting source opens that section automatically. The window fits the complete calculator without scrollbars, using compact keys
+on smaller screens.
+
 A–F are the six LCD menu keys. You can also click the corresponding labels
 along the bottom of the LCD (such as VECTR, MATR, LIST, HYP, REAL and BASE).
-This works with each new menu as its labels change. The other buttons send the original physical key
+This works with each new menu as its labels change. Framed popup choice lists
+(such as SOLVE, SYMBOLIC, TIME, STAT and UserRPL CHOOSE) also accept clicks:
+click a row to select and confirm it, or use the mouse wheel over the list to
+move through longer menus. Selection uses the ROM’s arrow and Enter keys, so
+menu actions retain their original behavior. The other buttons send the original physical key
 presses and releases, including left shift, right shift and alpha. ON cancels.
 The text editor accepts Unicode HP characters, including « », →, ∫, π and √,
 and HP ASCII transfer escapes such as `\<<`, `\>>` and `\->`.

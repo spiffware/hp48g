@@ -54,3 +54,5 @@ Additional desktop bridge changes:
 * Portable local-time offset calculation and 64-bit timer absolute values.
 * GX K/L/M/P/R and SX J ROM files verified by pinned hashes; checkpoint identity
   prevents restoring a CPU/RAM image under a different ROM revision.
+
+* Native object transfers allow expanded SX/GX heaps; allocation remains bounded by actual free emulated RAM.

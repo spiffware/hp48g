@@ -137,12 +137,12 @@ static void print_value(long address,int depth) {
     if(type==0x2a74) {
         long cursor=address+5;printf(",\"items\":[");int first=1;
         while(cursor<0xffffb && read_nibbles(cursor,5)!=0x312b && value_nodes<8192) {
-            size_t size=native_object_size(cursor,0x40000,0);if(!size)break;
+            size_t size=native_object_size(cursor,0x90000,0);if(!size)break;
             if(!first)printf(",");first=0;print_value(cursor,depth+1);cursor+=size;
         }
         printf("]");
     } else {
-        size_t size=native_object_size(address,0x40000,0);
+        size_t size=native_object_size(address,0x90000,0);
         printf(",\"raw\":\"");for(size_t i=0;i<size;i++)printf("%x",bus_fetch_nibble(address+i));printf("\"");
     }
     printf("}");
@@ -159,7 +159,7 @@ static void handle_line(char *line) {
         if(!data || !bridge_idle || (get_annunciators()&16)) {reply(id,0,"Wait until the calculator is idle");return;}
         if(!display.on || (get_annunciators()&7)) {reply(id,0,"Use the normal stack view with shift and alpha off before importing or running text");return;}
         data++;size_t size=strlen(data);
-        if(size<5 || size>0x40000) {reply(id,0,"Invalid object size");return;}
+        if(size<5 || size>0x90000) {reply(id,0,"Invalid object size");return;}
         unsigned char *nibbles=malloc(size);
         if(!nibbles) {reply(id,0,"Out of host memory");return;}
         for(size_t i=0;i<size;i++) {
@@ -174,7 +174,7 @@ static void handle_line(char *line) {
         int level=1;sscanf(line,"%*s %*ld %d",&level);
         if(strcmp(verb,"TAKE")==0 && level!=1) {reply(id,0,"Only level 1 can be taken");return;}
         if(!bridge_idle) {reply(id,0,"Wait until the calculator is idle");return;}
-        long address=stack_object(level);size_t size=address?native_object_size(address,0x40000,0):0;
+        long address=stack_object(level);size_t size=address?native_object_size(address,0x90000,0):0;
         if(!size) {reply(id,0,"Stack object unavailable");return;}
         printf("{\"id\":%ld,\"ok\":true,\"object\":\"",id);
         for(size_t i=0;i<size;i++)printf("%x",bus_fetch_nibble(address+i));
@@ -182,7 +182,7 @@ static void handle_line(char *line) {
         if(strcmp(verb,"TAKE")==0) pop_native_object();
     } else if(strcmp(verb,"CONSUME")==0) {
         char *expected=strchr(line,' ');expected=expected?strchr(expected+1,' '):NULL;
-        long address=stack_object(1);size_t size=address?native_object_size(address,0x40000,0):0;
+        long address=stack_object(1);size_t size=address?native_object_size(address,0x90000,0):0;
         if(!bridge_idle || !expected || !size || strlen(++expected)!=size) {reply(id,0,"Reply changed; stack was preserved");return;}
         for(size_t i=0;i<size;i++)if(expected[i]!="0123456789abcdef"[bus_fetch_nibble(address+i)]) {reply(id,0,"Reply changed; stack was preserved");return;}
         pop_native_object();reply(id,1,"Reply consumed");

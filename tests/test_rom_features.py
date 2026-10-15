@@ -183,3 +183,122 @@ def test_wake_launch_request_is_scoped_and_quoted(tmp_path,monkeypatch):
     wake.cancel_wake(item)
     assert not path.exists()
     assert 'cancel wakeorpoweron' in commands[-1][-1]
+
+
+def test_expanded_memory_and_four_mb_card_persist(native,tmp_path):
+    from hp48g.rom_cards import merge_source
+    from hp48g.rom_codec import string_object
+    core,binary,profile=native
+    core.execute("CLEAR 91 42 'KEEPME' STO 123 :2:OLD STO")
+    before=native_query(core,'MEM')
+    after=native_query(core,merge_source())
+    assert after-before>125*1024
+    assert abs(native_query(core,merge_source())-after)<1024
+    assert decode_real(core.request('EXPORT','1')['object'])==91
+    # Prove the transfer path can use more than the original 128 KB RAM.
+    large=string_object('x'*140000)
+    core.request('PUSH',large)
+    assert core.request('EXPORT','1')['object']==large
+    core.request('SAVE');core.close()
+    checkpoint=tmp_path/'memory';save_checkpoint(profile,checkpoint)
+    checkpoint.write_bytes(card_checkpoint(checkpoint,2,size=4194304))
+    restore_checkpoint(checkpoint,profile)
+    assert (profile/'port2').stat().st_size==4194304
+    restored=Core(binary,profile)
+    try:
+        restored.idle()
+        assert restored.request('TAKE')['object']==large
+        assert decode_real(restored.request('EXPORT','1')['object'])==91
+        assert native_query(restored,"'KEEPME' RCL")==42
+        assert native_query(restored,':2:OLD RCL')==123
+        assert native_query(restored,'1 PVARS SWAP DROP')=='SYSRAM'
+        restored.key(39)
+        wait_for(lambda:restored.frames and restored.frames[-1]['annunciators']&2)
+        restored.key(44)
+        wait_for(lambda:not restored.frames[-1]['on'])
+        restored.key(44)
+        wait_for(lambda:restored.frames[-1]['on'] and not restored.frames[-1]['annunciators']&7)
+        restored.idle()
+        assert native_query(restored,'PINIT 456 :32:HIGHBANK STO :32:HIGHBANK RCL')==456
+        restored.request('SAVE');save_checkpoint(profile,checkpoint);restored.close()
+        restore_checkpoint(checkpoint,profile)
+        restored=Core(binary,profile);restored.idle()
+        assert native_query(restored,':2:OLD RCL')==123
+        assert native_query(restored,':32:HIGHBANK RCL')==456
+        assert native_query(restored,'1 PVARS SWAP DROP')=='SYSRAM'
+        assert decode_real(restored.request('EXPORT','1')['object'])==91
+    finally:restored.close()
+
+
+def test_memory_options_ui_restore_configuration_and_data(native):
+    from hp48g.rom_window import RomWindow
+    from hp48g.rom_cards import CardManager
+    app=QApplication.instance() or QApplication([])
+    core,_,profile=native
+    core.execute('CLEAR 91 123 :2:SAVEDDATA STO');core.request('SAVE');core.close()
+    save_checkpoint(profile,profile/'calculator.hp48state')
+    window=RomWindow(profile);errors=[];window.problem=errors.append
+    wait_for(lambda:window.session is not None)
+    time.sleep(.2);app.processEvents()
+    try:
+        window.open_cards();cards=window.card_manager
+        wait_for(lambda:cards.isEnabled() and not window.session.querying)
+        cards.expand_memory()
+        wait_for(lambda:cards.isEnabled() and not window.session.querying)
+        assert '256 KB' in cards.memory_info.text()
+        old=window.session;cards.enable_storage()
+        wait_for(lambda:window.session is not None and window.session is not old and cards.isEnabled() and not window.session.querying,20)
+        assert '256 KB' in cards.memory_info.text() and '4 MB' in cards.memory_info.text()
+        bank=[];window.session.query('456 :32:HIGHBANK STO :32:HIGHBANK RCL',lambda value,error:bank.append((value,error)))
+        wait_for(lambda:bank);assert bank==[(456,None)]
+        cards.enable_storage()
+        wait_for(lambda:not window.session.querying)
+        assert window.session is not old
+        cards.close();window.close();wait_for(lambda:window.done)
+        window=RomWindow(profile);window.problem=errors.append
+        wait_for(lambda:window.session is not None);time.sleep(.2);app.processEvents()
+        window.open_cards();cards=window.card_manager
+        wait_for(lambda:cards.isEnabled() and not window.session.querying)
+        assert '256 KB' in cards.memory_info.text() and '4 MB' in cards.memory_info.text()
+        result=[];window.session.query(':2:SAVEDDATA RCL :32:HIGHBANK RCL 2 →LIST',lambda value,error:result.append((value,error)))
+        wait_for(lambda:result);assert result==[([123,456],None)]
+        reply=[];window.session.request('EXPORT','1',reply.append);wait_for(lambda:reply)
+        assert decode_real(reply[0]['object'])==91
+        assert not errors,errors
+    finally:
+        cards.close();window.close();wait_for(lambda:window.done)
+
+
+def test_mouse_selects_scrolling_rom_choose_list(native):
+    from hp48g.rom_window import RomWindow
+    from PySide6.QtCore import QPoint,QPointF,Qt
+    from PySide6.QtGui import QWheelEvent
+    from PySide6.QtTest import QTest
+    app=QApplication.instance() or QApplication([])
+    core,_,profile=native
+    core.execute('CLEAR 91');core.request('SAVE');core.close()
+    save_checkpoint(profile,profile/'calculator.hp48state')
+    window=RomWindow(profile);errors=[];window.problem=errors.append
+    wait_for(lambda:window.session is not None);window.show();time.sleep(.2);app.processEvents()
+    try:
+        window.session.execute('"Pick an item" { "ONE" "TWO" "THREE" "FOUR" "FIVE" "SIX" "SEVEN" "EIGHT" "NINE" "TEN" } 1 CHOOSE')
+        wait_for(lambda:window.lcd.choice is not None)
+        def point(row):
+            rect=window.lcd.display_rect();choice=window.lcd.choice
+            return QPoint(round(rect.x()+60*rect.width()/131),round(rect.y()+(choice.first_y+4+9*row)*rect.height()/64))
+        for _ in range(6):
+            pos=QPointF(point(0))
+            event=QWheelEvent(pos,pos,QPoint(),QPoint(0,-120),Qt.MouseButton.NoButton,Qt.KeyboardModifier.NoModifier,Qt.ScrollPhase.NoScrollPhase,False)
+            QApplication.sendEvent(window.lcd,event)
+            wait_for(lambda:not window.selecting_choice)
+        assert window.lcd.choice.selected==3
+        QTest.mouseClick(window.lcd,Qt.MouseButton.LeftButton,pos=point(0))
+        wait_for(lambda:not window.selecting_choice and window.lcd.choice is None)
+        reply=[];window.session.request('EXPORT','1',reply.append);wait_for(lambda:reply)
+        assert decode_real(reply[0]['object'])==1
+        reply=[];window.session.request('EXPORT','2',reply.append);wait_for(lambda:reply)
+        assert decode_value(reply[0]['value'])=='FOUR'
+        reply=[];window.session.request('EXPORT','3',reply.append);wait_for(lambda:reply)
+        assert decode_real(reply[0]['object'])==91
+        assert not errors,errors
+    finally:window.close();wait_for(lambda:window.done)

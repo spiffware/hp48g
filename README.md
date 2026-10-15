@@ -27,7 +27,7 @@ To open the original calculator directly:
 python -m hp48g --rom
 ```
 
-Choose **Original calculator → Download ROM revision…** on first use, or select a supported local ROM. Supported firmware is HP 48GX K/L/M/P/R and HP 48SX J. Source installations need a C compiler for this mode (macOS Command Line Tools, Linux GCC/Clang, or Windows MinGW GCC). Standalone packages include the compiled core. See the [original calculator guide](docs/original-calculator.md) for setup and desktop tools.
+Choose **File → Download ROM revision…** on first use, or select a supported local ROM. Supported firmware is HP 48GX K/L/M/P/R and HP 48SX J. Source installations need a C compiler for this mode (macOS Command Line Tools, Linux GCC/Clang, or Windows MinGW GCC). Standalone packages include the compiled core. See the [original calculator guide](docs/original-calculator.md) for setup and desktop tools.
 
 After installation, `hp48g` is also available as an application command. In this workspace dependencies are already installed in `.venv`; launch with `.venv/bin/python -m hp48g`.
 
@@ -101,6 +101,8 @@ has been cross-compiled. Native Windows and Linux package/runtime verification
 are provided for by the CI workflow and remain required before declaring those releases verified.
 The separate x48ng core retains its GPL license; see
 [provenance and modifications](hp48g/native/x48ng/UPSTREAM.md).
+
+In original GX mode, **Tools → Memory cards → Expand working memory to 256 KB** combines built-in RAM and port 1. **Enable 4 MB storage card** grows port 2 without clearing its existing objects. Memory configuration and contents persist across launches in the profile checkpoint. The card is separate object storage, with 3,968 KB accessible through the original ROM; it does not increase calculation working space. See the [memory setup guide](docs/original-calculator.md#setup).
 
 Original mode also includes ROM beep/alarm audio, rolling and named backups,
 clipboard transfer, a source editor/debugger, a memory browser, and mouse-driven

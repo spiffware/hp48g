@@ -2,10 +2,10 @@
 from pathlib import Path
 import sys
 import json
-from PySide6.QtCore import Qt, QProcess, QStandardPaths, QRect, QSize, Signal, QTimer, QMimeData
+from PySide6.QtCore import Qt, QProcess, QStandardPaths, QRect, QSize, Signal, QTimer, QMimeData, QEvent
 from PySide6.QtGui import QImage, QPainter, QColor
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QPushButton, QPlainTextEdit, QFileDialog, QMessageBox, QApplication, QInputDialog)
+    QLabel, QPushButton, QPlainTextEdit, QFileDialog, QMessageBox, QApplication, QInputDialog, QToolButton)
 from .rom_session import RomSession
 from .rom_codec import import_binary, export_binary
 from .rom_backups import Backups, atomic_bytes
@@ -29,6 +29,8 @@ def default_directory():
 
 class LCD(QWidget):
     menuActivated = Signal(int)
+    choiceActivated = Signal(int)
+    choiceScrolled = Signal(int)
 
     def __init__(self):
         super().__init__()
@@ -38,10 +40,13 @@ class LCD(QWidget):
         self.pixels = bytes(1088)
         self.powered = False
         self._pressed_menu = None
+        self.choice=None;self._pressed_choice=None
 
     def update_frame(self, data):
         self.pixels = bytes.fromhex(data['frame'])
         self.powered = data['on']
+        from .rom_menu import choice_list
+        self.choice=choice_list(self.pixels) if self.powered else None
         if not self.powered:
             self._pressed_menu = None
             self.unsetCursor()
@@ -64,9 +69,16 @@ class LCD(QWidget):
             return min(int(x//22),5)
         return None
 
+    def choice_at(self,position):
+        rect=self.display_rect()
+        if not self.choice or not rect.contains(position.toPoint()):return None
+        return self.choice.row_at((position.x()-rect.x())*131/rect.width(),(position.y()-rect.y())*64/rect.height())
+
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             self._pressed_menu = self.menu_at(event.position())
+            row=self.choice_at(event.position())
+            self._pressed_choice=(self.choice,row) if row is not None else None
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -74,12 +86,19 @@ class LCD(QWidget):
             menu = self.menu_at(event.position())
             if menu is not None and menu == self._pressed_menu:
                 self.menuActivated.emit(menu)
-            self._pressed_menu = None
+            row=self.choice_at(event.position())
+            if row is not None and self._pressed_choice==(self.choice,row):
+                self.choiceActivated.emit(row-self.choice.selected)
+            self._pressed_menu = None;self._pressed_choice=None
         super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
         menu = self.menu_at(event.position())
-        if menu is None:
+        row=self.choice_at(event.position())
+        if row is not None:
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.setToolTip("Click to choose this option; scroll to browse the list")
+        elif menu is None:
             self.unsetCursor()
             self.setToolTip('')
         else:
@@ -87,10 +106,17 @@ class LCD(QWidget):
             self.setToolTip(f'Click to select menu {chr(65+menu)}')
         super().mouseMoveEvent(event)
 
+    def wheelEvent(self,event):
+        if self.choice and self.choice_at(event.position()) is not None:
+            delta=event.angleDelta().y()
+            if delta:self.choiceScrolled.emit(-1 if delta>0 else 1)
+            event.accept();return
+        super().wheelEvent(event)
+
     def paintEvent(self, event):
-        painter = QPainter(self); painter.fillRect(self.rect(), QColor('#c8d7b2'))
+        painter = QPainter(self); painter.fillRect(self.rect(), QColor('#a5b394'))
         image = QImage(self.pixels,131,64,17,QImage.Format.Format_Mono)
-        image.setColorTable([QColor('#c8d7b2').rgba(),QColor('#193b32').rgba()])
+        image.setColorTable([QColor('#a5b394').rgba(),QColor('#34483e').rgba()])
         painter.drawImage(self.display_rect(),image)
 
 
@@ -101,39 +127,56 @@ class RomWindow(QMainWindow):
         self.backups=Backups(self.directory);self.pending_restore=None
         self.session = None; self.done = False; self.setup = None; self.held = set()
         self.setWindowTitle('HP 48GX · Original ROM R')
-        central=QWidget(); self.setCentralWidget(central); layout=QVBoxLayout(central)
-        self.title=QLabel('hp 48  ·  Original calculator'); self.title.setStyleSheet('font-size:24px;font-weight:bold'); layout.addWidget(self.title)
-        self.ann=QLabel(''); layout.addWidget(self.ann)
-        self.lcd=LCD(); layout.addWidget(self.lcd)
+        from .rom_skin import CASE_STYLE,key_cell,PrintedLogo
+        central=QWidget();central.setObjectName('calculatorCase');central.setStyleSheet(CASE_STYLE)
+        self.setCentralWidget(central)
+        shell=QVBoxLayout(central);shell.setContentsMargins(13,13,13,13)
+        face=QWidget();face.setObjectName('faceplate');shell.addWidget(face)
+        layout=QVBoxLayout(face);self.face_layout=layout;layout.setContentsMargins(18,14,18,12);layout.setSpacing(6)
+        header=QHBoxLayout();layout.addLayout(header)
+        brand=PrintedLogo(Path(__file__).parent/'assets'/'hp-logo.png');brand.setObjectName('brand');header.addWidget(brand)
+        self.title=QLabel('48GX');self.title.setObjectName('model');header.addWidget(self.title)
+        header.addStretch()
+        badge=QLabel('▰ ▰\nSCIENTIFIC GRAPHING');badge.setObjectName('badge');badge.setAlignment(Qt.AlignmentFlag.AlignRight);header.addWidget(badge)
+        bezel=QWidget();bezel.setObjectName('screenBezel');screen=QVBoxLayout(bezel);screen.setContentsMargins(11,10,11,13);screen.setSpacing(0)
+        self.ann=QLabel('');self.ann.setObjectName('annunciators');self.ann.setFixedHeight(15);screen.addWidget(self.ann)
+        self.lcd=LCD();screen.addWidget(self.lcd);layout.addWidget(bezel)
+        self.lcd.choiceActivated.connect(self.select_lcd_choice)
+        self.lcd.choiceScrolled.connect(lambda steps:self.select_lcd_choice(steps,False))
+        self.selecting_choice=False
         self.lcd.menuActivated.connect(lambda index:self.session.tap(index) if self.session else None)
-        self.status=QLabel('Preparing original calculator…'); self.status.setWordWrap(True); layout.addWidget(self.status)
-        grid=QGridLayout();layout.addLayout(grid); self.buttons=[]
-        row=col=0
+        grid=QGridLayout();grid.setHorizontalSpacing(7);grid.setVerticalSpacing(2);layout.addLayout(grid);self.buttons=[]
+        for col in range(30):grid.setColumnStretch(col,1)
         for index,label in enumerate(LABELS):
-            span=2 if index==24 or index in (33,38,43,48) else 1
-            if index==29: row=5;col=0
-            if index==34: row=6;col=0
-            if index==39: row=7;col=0
-            if index==44: row=8;col=0
-            button=QPushButton(label);button.setMinimumHeight(38);button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             alpha=chr(65+index) if index<24 else {25:'Y',26:'Z'}.get(index,'')
             left,right=SHIFT_LABELS.get(index,('',''))
-            button.setToolTip(f'Left shift: {left or "—"}   Right shift: {right or "—"}   Alpha: {alpha or "—"}')
+            # Keep legends visible even while the selected shift changes the key action.
+            shown={34:'↰',39:'↱',10:'▲',15:'◀',16:'▼',17:'▶'}.get(index,'' if index<6 else label)
+            cell,button=key_cell(index,shown,left.replace('<','&lt;'),right.replace('<','&lt;'),alpha)
+            button.setAccessibleName(label)
+            button.setToolTip(f'{label} · Left shift: {left or "—"} · Right shift: {right or "—"} · Alpha: {alpha or "—"}')
             button.pressed.connect(lambda i=index:self.session.key(i,True) if self.session else None)
             button.released.connect(lambda i=index:self.session.key(i,False) if self.session else None)
-            grid.addWidget(button,row,col,1,span);self.buttons.append(button)
-            col+=span
-            if col>=6: row+=1;col=0
-        # Bottom rows are five keys wide, matching the physical calculator.
-        self.editor=QPlainTextEdit();self.editor.setPlaceholderText('HP source, for example: 0 1 10 FOR i i + NEXT\nUse « » for programs.');self.editor.setMaximumHeight(110)
-        layout.addWidget(self.editor)
-        controls=QHBoxLayout();layout.addLayout(controls)
+            if index<24:row,col,span=index//6,(index%6)*5,5
+            elif index<29:row,col,span=4,(0 if index==24 else (index-23)*5),(10 if index==24 else 5)
+            else:row,col,span=5+(index-29)//5,((index-29)%5)*6,6
+            grid.addWidget(cell,row,col,1,span);self.buttons.append(button)
+        self.status=QLabel('Preparing original calculator…');self.status.setObjectName('calculatorStatus');self.status.setWordWrap(True);layout.addWidget(self.status)
+        self.entry_toggle=QToolButton();self.entry_toggle.setObjectName('entryToggle');self.entry_toggle.setText('Source entry & file transfer')
+        self.entry_toggle.setCheckable(True);self.entry_toggle.setArrowType(Qt.ArrowType.RightArrow);self.entry_toggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon);layout.addWidget(self.entry_toggle)
+        self.entry_panel=QWidget();entry_layout=QVBoxLayout(self.entry_panel);entry_layout.setContentsMargins(0,0,0,0)
+        self.editor=QPlainTextEdit();self.editor.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff);self.editor.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff);self.editor.setObjectName('sourceEntry');self.editor.setPlaceholderText('HP source, for example: 0 1 10 FOR i i + NEXT\nUse « » for programs.');self.editor.setMaximumHeight(85)
+        entry_layout.addWidget(self.editor)
+        controls=QHBoxLayout();entry_layout.addLayout(controls)
         for label,action in [('Run text',self.run_text),('Import object',self.import_object),('Export level 1',self.export_object),('Save memory',self.save)]:
             button=QPushButton(label);button.clicked.connect(action);controls.addWidget(button)
-        menu=self.menuBar().addMenu('Original calculator')
-        menu.addAction('Load HP source…',self.load_source)
-        menu.addAction('Use local HP 48 ROM…',self.choose_rom)
+        layout.addWidget(self.entry_panel);self.entry_panel.hide()
+        self.entry_toggle.toggled.connect(self.toggle_entry)
+        menu=self.menuBar().addMenu('File')
+        menu.addAction('Open another ROM profile…',self.open_profile)
+        menu.addAction('Use local HP48 ROM…',self.choose_rom)
         menu.addAction('Download ROM revision…',self.download_revision)
+        menu.addAction('Load HP source…',self.load_source)
         menu.addAction('Keyboard help',self.help)
         tools=self.menuBar().addMenu('Tools')
         tools.addAction('Program editor…',self.open_program_editor)
@@ -143,7 +186,6 @@ class RomWindow(QMainWindow):
         tools.addAction('Memory cards…',self.open_cards)
         tools.addAction('Background alarms and reminders…',lambda:self.background.dialog())
         tools.addAction('Emulator speed…',self.set_speed)
-        menu.addAction('Open another ROM profile…',self.open_profile)
         clipboard=self.menuBar().addMenu('Clipboard')
         clipboard.addAction('Copy stack level 1',self.copy_stack)
         clipboard.addAction('Paste into editor',self.paste_editor)
@@ -164,6 +206,7 @@ class RomWindow(QMainWindow):
         if draft.exists():self.editor.setPlainText(draft.read_text(encoding='utf-8'))
         self.editor.textChanged.connect(lambda:self.draft_timer.start())
         self.speed=0
+        prefs={}
         try:
             prefs=json.loads((self.directory/'desktop.json').read_text())
             self.speed=prefs.get('speed',0) if prefs.get('speed',0) in (0,250000,500000,1000000) else 0
@@ -174,8 +217,48 @@ class RomWindow(QMainWindow):
             self.audio.set_enabled(self.sound_action.isChecked());self.audio.set_volume(float(prefs.get('volume',.35)))
             self.sound_action.blockSignals(False)
         except (OSError,ValueError,TypeError):self.sound_action.blockSignals(False)
-        self.setMinimumWidth(480);self.resize(550,790)
+        self.entry_toggle.setChecked(bool(prefs.get('entry_panel',False)))
+        self.entry_toggle.toggled.connect(self.save_entry_preference)
+        self.fit_calculator()
         self.prepare()
+        QTimer.singleShot(0,self.fit_calculator)
+
+    def toggle_entry(self,visible):
+        self.entry_panel.setVisible(visible)
+        self.entry_toggle.setArrowType(Qt.ArrowType.DownArrow if visible else Qt.ArrowType.RightArrow)
+        if visible:self.editor.setFocus()
+        else:self.lcd.setFocus()
+        if hasattr(self,"audio"):self.fit_calculator()
+
+    def fit_calculator(self):
+        """Fit the complete case, never a scrollable slice of the keypad."""
+        from .rom_skin import CASE_STYLE
+        case=self.centralWidget();case.ensurePolished()
+        available=self.screen().availableGeometry()
+        limit=max(400,available.height()-45)
+        self.setMinimumSize(0,0)
+        # Compact only when necessary for the current display or open editor.
+        for compact in range(25):
+            case.setStyleSheet(CASE_STYLE+f"QPushButton#hpKey {{ font-size: {max(11,18-compact//2)}px; }} QLabel#keyLegend {{ font-size: {max(8,10-compact//4)}px; }} QPushButton#hpKey[shift] {{ font-size: {max(16,25-compact)}px; }}")
+            for button in self.buttons:button.setMinimumHeight(max(18,32-compact))
+            for label in case.findChildren(QLabel,"keyLegend"):label.setFixedHeight(max(10,13-compact//3))
+            for label in case.findChildren(QLabel,"alphaLegend"):label.setFixedHeight(10)
+            self.lcd.setMinimumSize(393,max(100,192-compact*5))
+            self.face_layout.setContentsMargins(18,max(5,14-compact),18,max(5,12-compact))
+            self.face_layout.setSpacing(max(2,6-compact//3))
+            logo=case.findChild(QLabel,'brand');logo.setFixedSize(max(129,174-compact*4),max(40,54-compact))
+            self.editor.setFixedHeight(max(44,85-compact*4))
+            case.layout().setContentsMargins(max(6,13-compact),max(6,13-compact),max(6,13-compact),max(6,13-compact))
+            case.layout().invalidate();case.layout().activate();self.layout().invalidate();self.layout().activate()
+            QApplication.sendPostedEvents(None,QEvent.Type.LayoutRequest)
+            required=self.minimumSizeHint()
+            if required.height()<=limit:break
+        self.setMinimumSize(required)
+        self.resize(max(560,required.width()),required.height())
+
+    def save_entry_preference(self,_):
+        try:self.save_preferences()
+        except OSError as exc:self.status.setText(str(exc))
 
     def download_revision(self):
         from .rom_setup import ROM_CATALOG
@@ -185,7 +268,7 @@ class RomWindow(QMainWindow):
     def prepare(self, download=False, source=None,revision='gxrom-r'):
         if self.session or (self.setup and self.setup.state()!=QProcess.ProcessState.NotRunning): return
         if not (self.directory/'rom').exists() and not download and source is None:
-            self.status.setText('Choose “Original calculator → Download ROM revision…” or use a local ROM to begin.');return
+            self.status.setText('Choose “File → Download ROM revision…” or use a local ROM to begin.');return
         self.status.setText('Preparing Saturn core…')
         self.setup=QProcess(self)
         args=(['--setup-rom'] if getattr(sys,'frozen',False) else ['-m','hp48g.rom_setup'])+['--directory',str(self.directory)]
@@ -201,7 +284,7 @@ class RomWindow(QMainWindow):
         try: self.session=RomSession(self.directory,self)
         except Exception as exc: self.problem(str(exc));return
         self.session.frame.connect(self.show_frame);self.session.error.connect(self.problem)
-        self.title.setText('hp 48'+self.session.model+'  ·  Original calculator')
+        self.title.setText('48'+self.session.model)
         self.setWindowTitle('HP 48'+self.session.model+' · '+self.session.revision.upper())
         self.session.audio.connect(self.audio.play)
         self.session.audio.connect(self.background.sound)
@@ -209,9 +292,42 @@ class RomWindow(QMainWindow):
         self.session.ready.connect(self.autosave_timer.start)
         self.session.ready.connect(lambda:self.session.request('SPEED',str(self.speed)))
         self.session.ready.connect(lambda:self.status.setText('First start: press ON if the screen is blank, then F (NO) at “Try To Recover Memory?”.' if self.session.fresh else 'Memory restored.'))
+        self.session.ready.connect(self.cards_restored)
         self.session.stopped.connect(self.closed)
         from .rom_instance import install_server
         if not getattr(self,'instance_server',None):self.instance_server=install_server(self)
+
+    def cards_restored(self):
+        pending=self.directory/'cards-pending'
+        session=self.session
+        def refreshed():
+            if hasattr(self,'card_manager'):
+                self.card_manager.setEnabled(True);self.card_manager.refresh()
+        if not pending.exists():refreshed();return
+        self.status.setText('Initializing updated memory card…')
+        def scanned(value,error):
+            if error:
+                refreshed();self.problem('Card initialization needs retry: '+error);return
+            def saved(ok):
+                if ok:
+                    pending.unlink(missing_ok=True)
+                    self.status.setText('Memory card configured and saved.')
+                refreshed()
+            session.save(saved)
+        session.rescan_cards(scanned)
+
+    def select_lcd_choice(self,steps,activate=True):
+        session=self.session
+        if not session or self.selecting_choice or session.closing:return
+        self.selecting_choice=True
+        keys=[16 if steps>0 else 10]*abs(steps)+([24] if activate else [])
+        def next_key():
+            if self.session is not session or session.closing:
+                self.selecting_choice=False;return
+            if not keys:self.selecting_choice=False;return
+            session.tap(keys.pop(0))
+            QTimer.singleShot(180,next_key)
+        next_key()
 
     def show_frame(self,data):
         self.lcd.update_frame(data)
@@ -219,7 +335,7 @@ class RomWindow(QMainWindow):
         for i,button in enumerate(self.buttons):
             left,right=SHIFT_LABELS.get(i,('',''))
             alpha=chr(65+i) if i<24 else {25:'Y',26:'Z'}.get(i,'')
-            button.setText((alpha if ann&4 else right if ann&2 else left if ann&1 else '') or LABELS[i])
+            button.setText((alpha if ann&4 else right if ann&2 else left if ann&1 else '') or {34:'↰',39:'↱',10:'▲',15:'◀',16:'▼',17:'▶'}.get(i,'' if i<6 else LABELS[i]))
         self.ann.setText('  '.join(label for bit,label in [(1,'LEFT SHIFT'),(2,'RIGHT SHIFT'),(4,'α'),(8,'LOW BATTERY'),(16,'BUSY'),(32,'I/O')] if ann&bit))
 
     def problem(self,message):
@@ -234,7 +350,7 @@ class RomWindow(QMainWindow):
     def load_source(self):
         path,_=QFileDialog.getOpenFileName(self,'Load HP source','','Text (*.txt *.rpl);;All files (*)')
         if path:
-            try:self.save_draft(archive=True);self.editor.setPlainText(Path(path).read_text(encoding='utf-8'))
+            try:self.save_draft(archive=True);self.editor.setPlainText(Path(path).read_text(encoding='utf-8'));self.entry_toggle.setChecked(True)
             except Exception as exc:self.problem(str(exc))
 
     def choose_rom(self):
@@ -370,6 +486,7 @@ class RomWindow(QMainWindow):
         self.session.request('EXPORT','1',exported)
 
     def paste_editor(self):
+        self.entry_toggle.setChecked(True)
         self.editor.insertPlainText(QApplication.clipboard().text());self.editor.setFocus()
 
     def paste_object(self):
@@ -382,11 +499,11 @@ class RomWindow(QMainWindow):
 
     def copy_lcd(self):
         image=QImage(self.lcd.pixels,131,64,17,QImage.Format.Format_Mono)
-        image.setColorTable([QColor('#c8d7b2').rgba(),QColor('#193b32').rgba()])
+        image.setColorTable([QColor('#a5b394').rgba(),QColor('#34483e').rgba()])
         QApplication.clipboard().setImage(image.copy());self.status.setText('LCD image copied.')
 
     def save_preferences(self):
-        atomic_bytes(self.directory/'desktop.json',json.dumps({'sound':self.audio.enabled,'volume':self.audio.volume,'background':self.background.enabled,'speed':self.speed}).encode())
+        atomic_bytes(self.directory/'desktop.json',json.dumps({'sound':self.audio.enabled,'volume':self.audio.volume,'background':self.background.enabled,'speed':self.speed,'entry_panel':self.entry_toggle.isChecked()}).encode())
 
     def set_sound(self,enabled):
         self.audio.set_enabled(enabled)
