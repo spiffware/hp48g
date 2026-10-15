@@ -40,7 +40,7 @@ recessed green LCD, blended Hewlett-Packard logo, and purple/teal shift legends.
 Shifted labels fit within the same key sizes. The complete calculator fits the
 window without scrollbars, with a more compact layout on smaller screens.
 
-![Current original-ROM calculator with HP-style face and LCD menus](docs/original-calculator.png)
+<img src="docs/original-calculator.png" alt="Current original-ROM calculator with HP-style face and LCD menus" width="560">
 
 Click the LCD's six bottom menu labels or use the A–F keys. Framed choice menus,
 including SOLVE, SYMBOLIC, TIME, STAT and UserRPL CHOOSE, also support clicking
@@ -62,7 +62,10 @@ for capacity limits, backups and storage examples.
 
 ## Using the enhanced Python workspace
 
-![Current enhanced Python workspace with symbolic results and two plotted functions](docs/preview.png)
+This separate mode retains the original desktop workspace design. The HP-style
+calculator face shown above belongs to **Original HP calculator** mode. Launch
+the enhanced workspace with `python -m hp48g`, or use `python -m hp48g --rom`
+for the HP-style interface.
 
 Enter `2 3 +` and press Enter, or enter each number separately and click `+`. Empty Enter duplicates the top of the stack. Input can contain a whole RPN sequence; operations consume their arguments from the stack in left-to-right order. Failed or cancelled sequences leave stack, variables, and modes unchanged. Undo retains up to 100 prior states. Calculations run in cancellable background processes with a 30-second timeout. Click **Cancel calculation** to stop a calculation while keeping its input.
 
