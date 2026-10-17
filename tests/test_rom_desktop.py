@@ -87,7 +87,7 @@ def test_rom_beep_frequency_duration_and_mute(native):
     assert not core.audio
 
 
-def test_qt_query_preserves_stack_and_reports_errors(native):
+def test_qt_query_preserves_stack_and_reports_errors(native,monkeypatch):
     app=QApplication.instance() or QApplication([])
     core,binary,profile=native
     core.execute('CLEAR 91');core.request('SAVE');core.close()
@@ -95,6 +95,13 @@ def test_qt_query_preserves_stack_and_reports_errors(native):
     (profile/'build').mkdir();shutil.copy2(binary,profile/'build'/binary.name)
     session=RomSession(profile);errors=[];session.error.connect(errors.append)
     ready=[];session.ready.connect(lambda:ready.append(True));wait_for(lambda:ready)
+    request=session.request;busy={'PUSH':2,'EXPORT':2}
+    def transient_busy(verb,args='',callback=None):
+        if busy.get(verb,0):
+            busy[verb]-=1
+            callback({'ok':False,'message':'Wait until the calculator is idle'})
+        else:request(verb,args,callback)
+    monkeypatch.setattr(session,'request',transient_busy)
     try:
         for source,expected in [('2 3 +',5),('VARS',[]),('1 0 /',None)]:
             result=[];session.query(source,lambda value,error:result.append((value,error)))
@@ -104,6 +111,7 @@ def test_qt_query_preserves_stack_and_reports_errors(native):
         result=[];session.request('EXPORT','1',result.append);wait_for(lambda:result)
         assert decode_real(result[0]['object'])==91
         assert not errors
+        assert busy=={'PUSH':0,'EXPORT':0}
     finally:
         stopped=[];session.stopped.connect(lambda:stopped.append(True));session.close();wait_for(lambda:stopped)
 

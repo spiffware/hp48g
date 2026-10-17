@@ -13,6 +13,7 @@ import zipfile
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from hp48g.rom_setup import build_core
+from hp48g.platform_ui import DISPLAY_NAME
 
 
 def main():
@@ -30,7 +31,9 @@ def main():
                     target=notices/name/str(file).replace('..','_');target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target)
     (notices/'packages.json').write_text(json.dumps(packages,indent=2))
     shutil.copyfile(ROOT/'LICENSE',notices/'HP48G-LICENSE')
-    command=[sys.executable,'-m','PyInstaller','--noconfirm','--clean','--windowed','--name','HP48G',
+    name=DISPLAY_NAME if sys.platform=='darwin' else 'HP48G'
+    icon=ROOT/'hp48g'/'assets'/('hp48gx-icon.icns' if sys.platform=='darwin' else 'hp48gx-icon.ico')
+    command=[sys.executable,'-m','PyInstaller','--noconfirm','--clean','--windowed','--name',name,'--icon',str(icon),
              '--paths',str(ROOT),'--add-data',str(notices)+os.pathsep+'notices','--collect-data','hp48g','--hidden-import','PySide6.QtMultimedia',
              '--hidden-import','PySide6.QtNetwork','--add-binary',str(core)+os.pathsep+'hp48g/native/bin',
              '--add-data',str(ROOT/'hp48g/native/x48ng')+os.pathsep+'hp48g/native/x48ng',
@@ -40,9 +43,9 @@ def main():
     if args.archive:
         if sys.platform=='darwin':
             staging=ROOT/'build'/'dmg';staging.mkdir(exist_ok=True)
-            app=staging/'HP48G.app'
+            app=staging/f'{name}.app'
             if app.exists():shutil.rmtree(app)
-            shutil.copytree(ROOT/'dist'/'HP48G.app',app,symlinks=True)
+            shutil.copytree(ROOT/'dist'/f'{name}.app',app,symlinks=True)
             link=staging/'Applications'
             if not link.exists():link.symlink_to('/Applications')
             subprocess.run(['hdiutil','create','-volname','HP48G','-srcfolder',str(staging),'-ov','-format','UDZO',str(ROOT/'dist'/'HP48G-macOS.dmg')],check=True)

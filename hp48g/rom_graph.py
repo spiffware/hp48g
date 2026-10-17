@@ -99,6 +99,15 @@ class RomGraph(QDialog):
         self.canvas.boundsChanged.connect(self.schedule_draw)
         self.debounce=QTimer(self);self.debounce.setSingleShot(True);self.debounce.timeout.connect(self.redraw)
         self.load()
+    def query(self,source,callback):
+        session=self.window.session
+        if not session:self.status.setText('Start the calculator first.');return
+        self.status.setText('Waiting for the calculator and processing…')
+        def done(value,error):
+            if error:self.status.setText(error+' Press ON to cancel a running calculation, then retry.');return
+            try:callback(value)
+            except Exception as exc:self.status.setText(str(exc))
+        session.query(source,done)
     def fetched(self,value):
         lower,upper,grob,flags,*metadata=value
         if metadata:
@@ -116,7 +125,7 @@ class RomGraph(QDialog):
         return source+('7 →LIST' if include_expression else '6 →LIST')
     def load(self):
         source="IFERR 'PPAR' RCL DROP THEN (-6.5,-3.1) PMIN (6.5,3.2) PMAX END "+self.fetch_source(include_expression=True)
-        self.window.query(source,self.fetched)
+        self.query(source,self.fetched)
     def expressions(self):return [s.strip() for s in self.expression.text().split(';') if s.strip()]
     def update_curves(self):
         for combo in (self.curve,self.other_curve):
@@ -136,7 +145,7 @@ class RomGraph(QDialog):
             eq=objects if len(expressions)==1 else objects+f' {len(expressions)} →LIST'
             source=(eq+f" 'EQ' STO {self.angles.currentText()} {self.plot_type.currentText()} "
                     +quote_name(self.variable.text().strip())+f' INDEP ({xmin:.12g},{ymin:.12g}) PMIN ({xmax:.12g},{ymax:.12g}) PMAX ERASE DRAX DRAW '+self.fetch_source())
-            self.window.query(source,self.fetched)
+            self.query(source,self.fetched)
         except Exception as exc:self.status.setText(str(exc))
     def pick(self,x,y):
         self.a.setValue(x)
@@ -158,7 +167,7 @@ class RomGraph(QDialog):
                 if kind=='Trace':
                     try:self.canvas.mark=(self.a.value(),float(value));self.canvas.update()
                     except (ValueError,TypeError):pass
-            self.window.query(source,done)
+            self.query(source,done)
         except Exception as exc:self.status.setText(str(exc))
     def schedule_draw(self,bounds):self.pending=bounds;self.debounce.start(200)
     def redraw(self):

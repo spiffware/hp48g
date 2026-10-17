@@ -11,7 +11,6 @@ import sys
 import time
 import uuid
 from PySide6.QtCore import QTimer,QDateTime,QProcess
-from PySide6.QtGui import QIcon,QPixmap,QPainter,QColor
 from PySide6.QtWidgets import (QSystemTrayIcon,QMenu,QApplication,QDialog,QVBoxLayout,QLabel,
     QLineEdit,QDateTimeEdit,QListWidget,QCheckBox)
 from .rom_backups import atomic_bytes
@@ -83,8 +82,8 @@ class BackgroundService:
             recovery=Path(window.directory)/('reminder-recovery-'+str(time.time_ns()))
             self.store=ReminderStore(recovery)
             QTimer.singleShot(0,lambda message=str(exc):window.status.setText('Existing reminder file could not be loaded and was preserved: '+message))
-        pixmap=QPixmap(32,32);pixmap.fill(QColor('#193b32'));painter=QPainter(pixmap);painter.setPen(QColor('#c8d7b2'));painter.drawText(pixmap.rect(),0x84,'48');painter.end()
-        self.tray=QSystemTrayIcon(QIcon(pixmap),window);self.tray.setToolTip('HP 48 calculator')
+        from .platform_ui import application_icon
+        self.tray=QSystemTrayIcon(application_icon(),window);self.tray.setToolTip('HP-48GX calculator')
         menu=QMenu(window);menu.addAction('Open calculator',self.show);menu.addAction('Reminders…',self.dialog);menu.addAction('Save and quit',self.quit)
         self.tray.setContextMenu(menu);self.tray.activated.connect(lambda reason:self.show() if reason==QSystemTrayIcon.ActivationReason.Trigger else None)
         self.tray.messageClicked.connect(self.show)

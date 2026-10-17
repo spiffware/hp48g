@@ -109,3 +109,36 @@ def test_choice_layout_detection_across_rom_menus(name,rows):
     assert menu.row_at(menu.left+10,menu.first_y+4)==0
     assert menu.row_at(menu.left+10,menu.first_y+9*(rows-1)+4)==rows-1
     assert menu.row_at(menu.left-1,menu.first_y+4) is None
+
+
+def test_enhanced_tools_are_docked_without_a_second_calculator(tmp_path,monkeypatch):
+    from hp48g.enhanced_tools import EnhancedTools
+    from hp48g.app import MainWindow
+    from PySide6.QtWidgets import QDockWidget
+    app=QApplication.instance() or QApplication([])
+    monkeypatch.setattr(EnhancedTools,'import_legacy',lambda self:None)
+    previous=set(app.topLevelWidgets())
+    rom=RomWindow(tmp_path/'rom')
+    try:
+        rom.open_enhanced();tools=rom.enhanced_tools
+        rom.open_enhanced()
+        assert rom.enhanced_tools is tools
+        assert len(rom.findChildren(QDockWidget))==1
+        assert not any(isinstance(w,MainWindow) for w in set(app.topLevelWidgets())-previous)
+        tools.source.setText('2 3 +');tools.runner.asynchronous=False;tools.calculate()
+        assert tools.results==[5]
+        assert tools.save()
+    finally:rom.close();app.processEvents()
+
+
+def test_graph_busy_message_stays_in_graph_window():
+    from types import SimpleNamespace
+    from PySide6.QtWidgets import QWidget
+    from hp48g.rom_graph import RomGraph
+    app=QApplication.instance() or QApplication([])
+    parent=QWidget()
+    parent.session=SimpleNamespace(query=lambda source,callback:callback(None,'Calculator is busy with another desktop operation'))
+    graph=RomGraph(parent)
+    assert 'busy' in graph.status.text()
+    assert 'ON' in graph.status.text()
+    graph.close();parent.close()

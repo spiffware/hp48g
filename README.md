@@ -1,15 +1,16 @@
-# HP 48G Desktop
+# HP 48GX Desktop
 
-A Python / Qt6 desktop calculator with two modes:
+<img src="hp48g/assets/hp48gx-icon.png" alt="HP 48GX application icon" width="96">
 
-- **Original HP calculator** runs HP 48GX or HP 48SX firmware on a Saturn emulator, with original commands, UserRPL/System RPL, LCD menus and graphics, plus desktop tools for programs, graphs, backups, memory cards and alarms.
-- **Enhanced Python workspace** provides a scrollable RPN stack, exact symbolic mathematics, a command browser and interactive desktop graphing. Its UserRPL support is a subset of the original calculator.
+One HP-style calculator, powered by original HP firmware, with enhanced Python mathematics in a closable side panel. The interface uses **Qt6 / PySide6**. A separate x48ng Saturn core runs the ROM; SymPy, SciPy and Matplotlib power the enhanced tools.
 
-The interface uses **PySide6**. The enhanced workspace uses SymPy, SciPy and Matplotlib; original mode uses a separate x48ng native core and a separately downloaded HP ROM. Each mode has independent memory.
+The ROM handles the calculator keypad, stack, variables, HP commands, UserRPL/System RPL, menus and native graphics. Enhanced calculations are explicit tool operations; they do not replace ROM command behavior or introduce a second calculator window.
+
+<img src="docs/original-calculator.png" alt="HP 48GX calculator face" width="560">
 
 ## Run
 
-Requires Python 3.10 or newer.
+Requires Python 3.10 or newer and a C compiler for source installations.
 
 ```sh
 python3 -m venv .venv
@@ -18,129 +19,76 @@ python -m pip install -e '.[dev]'
 python -m hp48g
 ```
 
-On Windows, activate the environment with `.venv\Scripts\activate` instead.
-On macOS, double-click `Launch.command` after setup to open the enhanced workspace.
+On Windows, activate with `.venv\Scripts\activate`. On macOS, `Launch.command` starts the same calculator after setup. The installed `hp48g` command also opens it. macOS source launches use a small generated `build/HP 48GX Calculator.app` bundle so the Dock and task switcher show the calculator name; this bundle uses the current source and virtual environment. The previous `--rom` argument remains accepted, but is no longer needed. Use `--rom-directory PATH` to select another profile.
 
-To open the original calculator directly:
+Choose **File → Download ROM revision…** or **Use local HP48 ROM…**. Supported firmware is HP 48GX K/L/M/P/R and HP 48SX J. ROMs are downloaded separately and are never included in packages. Source installations need macOS Command Line Tools, Linux GCC/Clang, or Windows MinGW GCC; standalone packages include the compiled core.
 
-```sh
-python -m hp48g --rom
-```
+The tested dependency versions are recorded in `requirements-lock.txt` (macOS, Python 3.12). See the [calculator guide](docs/original-calculator.md) for ROM setup and desktop tools.
 
-Choose **File → Download ROM revision…** on first use, or select a supported local ROM. Supported firmware is HP 48GX K/L/M/P/R and HP 48SX J. Source installations need a C compiler for this mode (macOS Command Line Tools, Linux GCC/Clang, or Windows MinGW GCC). Standalone packages include the compiled core. See the [original calculator guide](docs/original-calculator.md) for setup and desktop tools.
+## Using the calculator
 
-After installation, `hp48g` is also available as an application command. In this workspace dependencies are already installed in `.venv`; launch with `.venv/bin/python -m hp48g`.
+The calculator face uses an HP-style case, recessed green LCD, Hewlett-Packard logo and purple/teal shift legends. Key sizes remain stable when shift modes change. The face fits without scrollbars and compacts on smaller screens.
 
-The tested dependency versions are recorded in `requirements-lock.txt` (macOS, Python 3.12).
+Click the LCD's six bottom menu labels or use A–F. Framed choice menus, including SOLVE, SYMBOLIC, TIME, STAT and UserRPL CHOOSE, support clicking an option to select and confirm it. Use the mouse wheel to browse longer lists. **Source entry & file transfer** expands the ROM source editor beneath the keypad; its open/closed state persists.
 
-## Original HP calculator
+On macOS, the application menu and task-switcher name are **HP 48GX Calculator**. **File** contains profile selection, local ROM loading, ROM downloads, HP source loading and keyboard help.
 
-The original-mode face follows the HP 48GX layout, with a charcoal case,
-recessed green LCD, blended Hewlett-Packard logo, and purple/teal shift legends.
-Shifted labels fit within the same key sizes. The complete calculator fits the
-window without scrollbars, with a more compact layout on smaller screens.
+## Enhanced tools
 
-<img src="docs/original-calculator.png" alt="Current original-ROM calculator with HP-style face and LCD menus" width="560">
+Choose **Tools → Enhanced tools** to open the side panel in the calculator window. Close the panel to return to the calculator face alone. There is no separate Python calculator or mode-switching workflow.
 
-Click the LCD's six bottom menu labels or use the A–F keys. Framed choice menus,
-including SOLVE, SYMBOLIC, TIME, STAT and UserRPL CHOOSE, also support clicking
-an option to select and confirm it; use the mouse wheel to browse longer lists.
-**Source entry & file transfer** expands the editor below the keypad, and its
-open/closed state persists across launches.
+![HP 48GX with enhanced graphing in the same window](docs/enhanced-tools.png)
 
-On macOS, the application menu is named **HP-48GX**. The **File** menu provides
-**Open another ROM profile…**, **Use local HP48 ROM…**, **Download ROM revision…**,
-**Load HP source…**, and **Keyboard help**, in that order. Saved profiles remain
-in the existing `HP48G Desktop` application-data directory.
+- **Math:** exact symbolic calculations, derivatives, integrals, solving, simplification, matrices, vectors and complex arithmetic. Enter an enhanced RPN calculation; its results appear in the tool, leaving the HP stack unchanged.
+- **Graph & Analyze:** multiple functions, polar and parametric curves, implicit contours, 3D surfaces, slope fields, histograms and scatter plots. Includes pan/zoom, image export, roots, intersections, integration, extrema, derivatives and value tables.
+- **Statistics:** descriptive statistics and paired-data linear regression.
+- **Units:** common length, mass, time, temperature, pressure, energy, volume and angle conversions.
+- **Solvers:** first-order differential equations, time-value-of-money finance and probability distributions.
 
-For expanded memory, choose **Tools → Memory cards → Expand working memory to
-256 KB** or **Enable 4 MB storage card**. These GX settings and card contents
-persist across launches. The card provides 3,968 KB of ROM-accessible object
-storage, separate from the 256 KB working memory. Expansion retains existing
-card objects and creates a recovery backup. See the [memory setup guide](docs/original-calculator.md#setup)
-for capacity limits, backups and storage examples.
+Use **Refresh HP context** to read the calculator's angle mode and numeric variables in the current directory. Refresh after changing them on the calculator. Graphs also offer explicit RAD/DEG/GRAD overrides.
 
-## Using the enhanced Python workspace
+Select an **HP stack level** and choose **Copy to tool** to read a supported value without removing it. The Statistics and Units tabs receive suitable data directly; other tabs send the copied value to Math for inspection. Native objects that cannot be inspected stay on the HP calculator and remain accessible through its ROM tools.
 
-This separate mode retains the original desktop workspace design. The HP-style
-calculator face shown above belongs to **Original HP calculator** mode. Launch
-the enhanced workspace with `python -m hp48g`, or use `python -m hp48g --rom`
-for the HP-style interface.
+Choose **Send result to stack** (or **Send selected result to HP stack** in Math) to append a compatible result to the HP stack. Existing stack entries are preserved. Numbers use HP's 12-digit precision and range; exact Python results remain available in the tools. Transfers support finite numbers, complex numbers, lists, numeric matrices, strings and basic arithmetic algebraics. Unsupported exact objects and oversized values remain on the host; the app reports the limitation instead of replacing the result or clearing the stack.
 
-Enter `2 3 +` and press Enter, or enter each number separately and click `+`. Empty Enter duplicates the top of the stack. Input can contain a whole RPN sequence; operations consume their arguments from the stack in left-to-right order. Failed or cancelled sequences leave stack, variables, and modes unchanged. Undo retains up to 100 prior states. Calculations run in cancellable background processes with a 30-second timeout. Click **Cancel calculation** to stop a calculation while keeping its input.
-
-Use **STACK** to browse every stack level, copy a value to the top, move it, edit it, or delete it. `n PICK` copies stack level n; `n ROLL` moves it to the top. The main display also scrolls through the entire stack.
-
-- Scientific: degree/radian/gradian trigonometry, inverse and hyperbolic functions, logarithms, powers, factorials, combinations, permutations, percentages, complex arithmetic, binary-integer arithmetic and logic with adjustable word size.
-- Symbolic: derivatives, indefinite and definite integrals, equation solving, numerical roots, substitution, simplification, expansion, factorization, exact and decimal display.
-- Linear algebra: matrices, determinant, inverse, transpose, rank, trace, eigenvalues, linear systems, vector dot/cross products and norms. Bracketed vectors use elementwise addition/subtraction and scalar multiplication/division; two-vector multiplication requires DOT or CROSS. Eigenvalues include multiplicities.
-- Data: mean, median, sample variance/deviation, sorting, sums, paired-data linear regression and correlation.
-- Graphs: multiple functions, polar, parametric, implicit zero contours, 3D surfaces, slope fields, histograms and scatter plots. Pan, zoom and image export are in the plot toolbar. Each plot type retains its inputs and axis limits. Set y limits directly or use the toolbar; Reset view restores the domain. Function sampling refines curved segments and splits detected poles, but remains a bounded numerical approximation.
-- Analysis: selected-curve bracketed roots, intersections, numerical integration, bounded extrema (including endpoints), derivatives, values, and a 21-point value table. Moving over a function displays sampled trace coordinates.
-- Solvers: first-order differential equations with initial conditions, end-of-period time-value-of-money cash flows, normal/Student t/chi-square/binomial/Poisson density, cumulative and inverse probabilities.
-- Programs and memory: structured UserRPL with branches, loops, local variables and error handling; source editing; named variables and directories; complete workspace JSON save/load and automatic desktop restore. See the [UserRPL compatibility guide](docs/rpl-compatibility.md) for supported syntax and differences.
-- Units: conversions for common length, mass, time, temperature, pressure, energy, volume and angle units.
-
-### Examples
+### Enhanced Math examples
 
 | Input | Operation |
 |---|---|
 | `'x^3-2*x' x DIFF` | Differentiate with respect to x |
-| `'x^2' x 0 3 DINT` | Integrate from 0 to 3 |
+| `'x^2' x 0 3 DINT` | Definite integral |
 | `'x^2-2' x SOLVE` | Symbolic roots |
 | `RAD 'cos(x)-x' x 1 ROOT` | Numerical root near 1 |
-| `[[2,0],[0,4]] [6,8] LSOLVE` | Solve A·x = b |
-| `42 'a' STO` then `a` | Store and recall |
-| `« DUP * » 'square' STO` then `7 square` | Store and run a program |
+| `[[2,0],[0,4]] [6,8] LSOLVE` | Solve a linear system |
+| `[1,2,3] [4,5,6] DOT` | Vector dot product |
 
-Arguments to `SUBST` are expression and `[symbol,value]`; `DINT` takes expression, symbol, lower, upper; `ROOT` takes expression, symbol, guess. The command browser lists every registered calculation command. Stack and memory commands are described in the Guide tab. HP lists use `{ 1 2 3 }`; vectors accept `[1 2 3]` or the existing `[1,2,3]` syntax. Single-letter names remain convenient symbolic variables. Unknown longer names report an error with a command suggestion. Quote a new symbolic name, for example `'velocity'`; stored variables can then be recalled without quotes. Command names cannot be overwritten by STO.
+These examples use the Python math engine's syntax. Use the calculator keypad or **Source entry & file transfer** for original HP programs and commands. The [enhanced UserRPL reference](docs/rpl-compatibility.md) describes the Python engine's subset; it does not limit the ROM calculator.
 
-Typed trig expressions and keypad trig both follow DEG/RAD/GRAD. For example, `DEG sin(90)` and `DEG 90 SIN` both produce 1. Quoted expressions capture the angle convention when entered.
+Each enhanced calculation starts with its entered arguments and the refreshed numeric context, rather than a second persistent stack. Results are selected for explicit transfer. Long Python calculations run in cancellable workers with a 30-second timeout.
 
-Graph angles default to the calculator setting, with explicit RAD/DEG/GRAD overrides in the graph panel. Polar/parametric examples default to RAD. Stored scalar variables are available in graph expressions; the plot's independent variables (`x`, `y`, or `t`) override memory values with those names. Each mode retains its own expressions, domain and view when switching modes. Invalid graph input preserves the previous graph. Adding curves retains the view; changing a function domain updates x while preserving y.
+For multiple graphs, enter a second function in the optional field or separate more curves with semicolons. Select a curve for analysis and a second curve for intersections. Inputs and axis views persist by plot type. Adding curves retains the view. Roots/intersections require a sign-changing bracket; detected discontinuities are rejected. Bounded extrema are not certified global extrema, and finite sampling can miss small features.
 
-Enter a second function in the optional field, or separate more curves with semicolons. Choose a curve in the analysis selector; Intersection uses the second curve selector as well. The domain supplies the analysis interval. Roots and intersections need a sign-changing bracket; detected discontinuities are rejected. Bounded extrema include endpoints but are not certified global extrema for multimodal functions. Sampling can still miss features smaller than its resolution.
+## Memory and saved work
 
-**Send result to stack** transfers graph analysis, unit conversion, finance, probability and ODE results into the RPN stack. Statistics offers a selector for the input data, summary statistics or regression coefficients. Transferred results can be stored with `'name' STO`, used in calculations and undone.
+**Tools → Memory cards → Expand working memory to 256 KB** merges a GX's built-in RAM and port 1. **Enable 4 MB storage card** expands port 2 while retaining its objects. Configuration and contents persist in the profile checkpoint. Expansion creates a recovery backup.
 
-## Saving and restoring the enhanced workspace
+The card provides 3,968 KB of ROM-accessible object storage through ports 2–32, separate from the 256 KB working memory. For example, `123 :2:VALUE STO` stores an object and `:2:VALUE RCL` recalls it. These GX shortcuts do not apply to SX profiles. See the [memory guide](docs/original-calculator.md#setup).
 
-Session version 2 saves exact structured mathematical values, including unevaluated integrals, derivatives, piecewise expressions and algebraic roots. It also saves UserRPL lists, strings, binary integers, tagged objects, user flags, binary modes, directory trees/current path, program-editor drafts, graph inputs/views for each mode, statistics data/results, solver inputs/results, unit settings, unfinished entry text and panel layout. Version 1 calculator sessions remain readable, including older unevaluated-integral values. Files are validated before the current workspace changes, and saves use atomic replacement.
+Saved data lives in a per-user `hp48gx` directory: `~/Library/Application Support/hp48gx` on macOS, `%LOCALAPPDATA%/hp48gx` on Windows, and `$XDG_DATA_HOME/hp48gx` (normally `~/.local/share/hp48gx`) on Linux. The default calculator profile is its `original-hp48` subdirectory. Existing `HP48G Desktop` data is copied on first launch after the old calculator closes; the old directory is retained as a recovery copy, and existing new data is never overwritten. Explicitly selected custom ROM profiles stay in their chosen locations. ROM memory is saved periodically and on normal exit. Enhanced inputs, graph settings, solver settings and Math results are saved separately as `enhanced-tools.json` inside the same profile. Python tools can retain results larger or more exact than the ROM can represent.
 
-The desktop launcher automatically saves the workspace to Qt's application-data directory and restores it on launch. On macOS this is normally `~/Library/Application Support/HP48G Desktop/workspace.json`. Session → Save creates a separate portable JSON file. Opening another file prompts to save unsaved changes. Closing saves the automatic workspace; if that fails, the app asks before discarding work. Automatic saving does not overwrite a manually saved session file.
+On first opening Enhanced tools, an existing `HP48G Desktop/workspace.json` from the former Python calculator is read to recover tool inputs and saved stack/variable values. Recovered values appear as Math results for explicit transfer. The old file remains untouched; this migration does not overwrite HP memory. Previous Python programs and other unsupported results remain in that original file.
 
+## Other desktop tools
 
-## Compatibility boundary
+The **Tools**, **Clipboard** and **Sound** menus provide ROM graph interaction and analysis, a source editor/debugger, memory browsing, rolling and named backups, memory cards, clipboard transfer, ROM beep/alarm audio and reminders. Source stepping, breakpoints and watches remain available. Background operation, start-at-login and OS wake requests are optional; wake behavior depends on hardware and permissions.
 
-The application has two calculator modes. **Calculator → Original HP 48GX (ROM)**
-runs original HP 48GX (K/L/M/P/R) or HP 48SX (J) firmware on a Saturn emulator, with the HP command
-set, UserRPL/System RPL, native binary objects, menus and original graphics.
-The Python/PySide6 window provides keyboard input, file transfer and saved memory.
-See [original-calculator setup and usage](docs/original-calculator.md).
+Graph Tools works on the ROM's PICT and PPAR data. Enhanced Graph & Analyze computes with Python and transfers selected results explicitly. They serve different operations within the same application. See the [calculator guide](docs/original-calculator.md) for scope and debugger limitations.
 
-The **enhanced Python workspace** provides exact symbolic arithmetic and desktop
-graphing tools. Its UserRPL interpreter has a smaller command set and different
-numeric behavior; its compatibility inventory applies only to that mode.
-See [enhanced UserRPL examples and limits](docs/rpl-compatibility.md).
+## Compatibility and platforms
 
-Original mode requires a separately downloaded, checksum-verified HP ROM.
-Standalone packages include Python, Qt and the core; source builds need a C
-compiler. Serial/infrared are excluded. Instruction pacing is available, but
-cycle-exact timing is not guaranteed. The macOS app has been locally tested; the Windows core
-has been cross-compiled. Native Windows and Linux package/runtime verification
-are provided for by the CI workflow and remain required before declaring those releases verified.
-The separate x48ng core retains its GPL license; see
-[provenance and modifications](hp48g/native/x48ng/UPSTREAM.md).
+Original commands and native object behavior remain implemented by HP firmware. Serial and infrared connections are excluded. Instruction pacing is available, but cycle-exact timing is not guaranteed. Python enhancements use different numerical methods and are never silently substituted for ROM operations.
 
-Original mode also includes ROM beep/alarm audio, rolling and named backups,
-clipboard transfer, a source editor/debugger, a memory browser, and mouse-driven
-graph tools. Open the **Tools**, **Clipboard**, and **Sound** menus.
-
-Additional original-mode tools include source stepping and breakpoints, local
-and global watches, memory-card management, multiple graph expressions and
-ROM-based curve analysis, persistent reminders, optional background operation,
-start-at-login and OS wake requests. Wake behavior depends on hardware and OS
-permissions. See the original-calculator usage guide for scope, platform validation and debugger limitations.
+The macOS app has been locally tested; the Windows core has been cross-compiled. Native Windows and Linux package/runtime verification remains required before declaring those releases verified. The x48ng core retains its GPL license; see [provenance and modifications](hp48g/native/x48ng/UPSTREAM.md).
 
 ## Tests
 
@@ -148,22 +96,24 @@ permissions. See the original-calculator usage guide for scope, platform validat
 python -m pytest -q
 ```
 
-For headless Qt tests, set `QT_QPA_PLATFORM=offscreen`. Native ROM tests require a local ROM; without it those tests explicitly skip. To download the six checksum-verified fixtures and run the full suite on macOS/Linux:
+For headless Qt tests, set `QT_QPA_PLATFORM=offscreen`. Native ROM tests require local firmware and skip when it is unavailable. To download checksum-verified fixtures and run the full suite on macOS/Linux:
 
 ```sh
 python scripts/download_test_roms.py
 HP48G_TEST_ROM=.rom/rom QT_QPA_PLATFORM=offscreen python -m pytest -q
 ```
 
-On Windows, set those environment variables in your shell before running pytest. ROM fixtures are ignored by Git and excluded from packages. Tests cover both calculator modes, persistence, desktop tools and representative ROM behavior; they do not certify every HP command or cycle-accurate hardware behavior.
+On Windows, set the environment variables in your shell first. Fixtures are ignored by Git and excluded from packages. Tests cover the ROM, enhanced calculations, stack transfer, persistence and desktop tools; they do not certify every HP command or cycle-accurate behavior.
 
-## Standalone desktop packages
+## Standalone packages
 
 ```sh
 python -m pip install -e '.[dev,packaging]'
 python scripts/build_desktop.py --archive
 ```
 
-Build on the target operating system. Outputs in `dist/` are a macOS app/DMG, a Windows portable ZIP, or a Linux tarball. Packages include Python, Qt, the compiled core, native source and license notices; users download their ROM separately. The macOS package is locally signed but not Apple-notarized, and Windows packages are unsigned.
+The application includes a shared HP/48GX icon for windows, the macOS Dock, task switchers and the tray. Builds embed `.icns` artwork on macOS and a multi-size `.ico` on Windows. See [icon assets](hp48g/assets/README.md) for regeneration instructions.
 
-The [desktop build workflow](.github/workflows/desktop.yml) runs tests and creates artifacts on macOS, Linux and Windows when manually dispatched or when a `v*` tag is pushed. It does not publish a release automatically. See [packaging details](docs/original-calculator.md#building-desktop-packages).
+Build on the target OS. Outputs in `dist/` are a macOS app/DMG, Windows portable ZIP or Linux tarball. Packages include Python, Qt, the core, native source and license notices; users download firmware separately. macOS packages are locally signed but not Apple-notarized; Windows packages are unsigned.
+
+The [build workflow](.github/workflows/desktop.yml) runs tests and creates artifacts on macOS, Linux and Windows when manually dispatched or when a `v*` tag is pushed. It does not publish a release automatically. See [packaging details](docs/original-calculator.md#building-desktop-packages).

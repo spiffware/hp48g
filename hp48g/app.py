@@ -78,7 +78,7 @@ class MainWindow(QMainWindow):
         left.addLayout(grid); splitter.addWidget(body)
         self.tabs=QTabWidget(); splitter.addWidget(self.tabs); splitter.setSizes([410,870])
         self.tabs.addTab(self.math_panel(),'Math & memory')
-        self.plot=PlotPanel(self.tool_context,self.push_value,asynchronous); self.tabs.addTab(self.plot,'Graph & analyze')
+        self.plot=PlotPanel(self.tool_context,self.push_value,asynchronous); self.tabs.addTab(self.plot,'Graph && Analyze')
         self.tabs.addTab(self.stats_panel(),'Statistics'); self.tabs.addTab(self.units_panel(),'Units')
         self.solvers=ToolsPanel(self.tool_context,self.push_value,asynchronous); self.tabs.addTab(self.solvers,'Solvers'); self.tabs.addTab(self.help_panel(),'Guide')
         self.hide_tools_button=QPushButton('×')
@@ -115,6 +115,7 @@ class MainWindow(QMainWindow):
         from .rom_window import RomWindow
         if not hasattr(self,'original_window') or self.original_window.done:
             self.original_window=RomWindow()
+        self.original_window.enhanced_window=self
         self.original_window.show(); self.original_window.raise_(); self.original_window.activateWindow()
 
     def open_program_editor(self):
@@ -508,6 +509,9 @@ See README.md for supported features and known compatibility gaps.
 
 
 def main():
+    if '--worker' in sys.argv:
+        from .worker import main as worker_main
+        return worker_main()
     if '--schedule-wake' in sys.argv:
         sys.argv.remove('--schedule-wake')
         from .rom_wake import main as wake_main
@@ -516,23 +520,28 @@ def main():
         sys.argv.remove('--setup-rom')
         from .rom_setup import main as setup_main
         return setup_main()
-    from .platform_ui import DISPLAY_NAME,prepare_application_name
+    if '--quit-rom' not in sys.argv:
+        from .macos_launcher import relaunch_as_application
+        relaunch_as_application()
+    from .platform_ui import DISPLAY_NAME,prepare_application_name,application_icon
     prepare_application_name()
-    app=QApplication(sys.argv); app.setApplicationName('HP48G Desktop'); app.setApplicationDisplayName(DISPLAY_NAME); app.setStyle('Fusion'); app.setStyleSheet(STYLE)
-    auto_path=Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))/'workspace.json'
-    if '--rom' in sys.argv:
-        from .rom_window import RomWindow
-        directory=None
-        if '--rom-directory' in sys.argv:
-            directory=sys.argv[sys.argv.index('--rom-directory')+1]
-        from .rom_window import default_directory
-        from .rom_instance import send_existing
-        directory=directory or default_directory()
-        command='quit' if '--quit-rom' in sys.argv else 'background' if '--background' in sys.argv else 'show'
-        if send_existing(directory,command):return
-        if command=='quit':return
-        window=RomWindow(directory)
-    else: window=MainWindow(auto_path=auto_path)
+    app=QApplication(sys.argv); app.setApplicationName('HP48G Desktop'); app.setApplicationDisplayName(DISPLAY_NAME); app.setWindowIcon(application_icon()); app.setStyle('Fusion'); app.setStyleSheet(STYLE)
+    from .rom_window import RomWindow,default_directory
+    from .rom_instance import send_existing
+    from .data_paths import migrate_data,legacy_directory
+    directory=default_directory()
+    if '--rom-directory' in sys.argv:
+        directory=sys.argv[sys.argv.index('--rom-directory')+1]
+    command='quit' if '--quit-rom' in sys.argv else 'show'
+    legacy_profile=legacy_directory()/'original-hp48'
+    if Path(directory).resolve() in (Path(default_directory()).resolve(),legacy_profile.resolve()):
+        # Older shortcuts and scheduled launches follow the migrated default profile.
+        if not Path(default_directory()).exists() and send_existing(legacy_profile,command):return
+        if command!='quit':migrate_data()
+        directory=default_directory()
+    if send_existing(directory,command):return
+    if command=='quit':return
+    window=RomWindow(directory)
     if '--background' in sys.argv and hasattr(window,'background'):
         try:window.background.set_enabled(True)
         except ValueError:window.show()

@@ -5,7 +5,7 @@ import json
 from PySide6.QtCore import Qt, QProcess, QStandardPaths, QRect, QSize, Signal, QTimer, QMimeData, QEvent
 from PySide6.QtGui import QImage, QPainter, QColor
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QPushButton, QPlainTextEdit, QFileDialog, QMessageBox, QApplication, QInputDialog, QToolButton)
+    QLabel, QPushButton, QPlainTextEdit, QFileDialog, QMessageBox, QApplication, QInputDialog, QToolButton, QDockWidget)
 from .rom_session import RomSession
 from .rom_codec import import_binary, export_binary
 from .rom_backups import Backups, atomic_bytes
@@ -24,7 +24,8 @@ LABELS = ['A','B','C','D','E','F','MTH','PRG','CST','VAR','↑','NXT',"'",'STO',
 
 
 def default_directory():
-    return Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))/'original-hp48'
+    from .data_paths import data_directory
+    return data_directory()/'original-hp48'
 
 
 class LCD(QWidget):
@@ -179,6 +180,7 @@ class RomWindow(QMainWindow):
         menu.addAction('Load HP source…',self.load_source)
         menu.addAction('Keyboard help',self.help)
         tools=self.menuBar().addMenu('Tools')
+        tools.addAction('Enhanced tools',self.open_enhanced)
         tools.addAction('Program editor…',self.open_program_editor)
         tools.addAction('Memory browser…',self.open_memory)
         tools.addAction('Graph tools…',self.open_graph)
@@ -222,6 +224,7 @@ class RomWindow(QMainWindow):
         self.fit_calculator()
         self.prepare()
         QTimer.singleShot(0,self.fit_calculator)
+        if prefs.get("enhanced_tools",False):QTimer.singleShot(0,self.open_enhanced)
 
     def toggle_entry(self,visible):
         self.entry_panel.setVisible(visible)
@@ -402,7 +405,34 @@ class RomWindow(QMainWindow):
     def open_graph(self):
         from .rom_graph import RomGraph
         if self.session:
-            self.graph_tools=RomGraph(self);self.graph_tools.show()
+            if not hasattr(self,'graph_tools'):self.graph_tools=RomGraph(self)
+            self.graph_tools.show();self.graph_tools.raise_()
+
+    def open_enhanced(self):
+        from .enhanced_tools import EnhancedTools
+        if not hasattr(self,'enhanced_tools'):
+            self.enhanced_dock=QDockWidget('Enhanced tools',self)
+            self.enhanced_dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
+            self.enhanced_dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetClosable)
+            self.enhanced_tools=EnhancedTools(self)
+            self.enhanced_dock.setWidget(self.enhanced_tools)
+            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea,self.enhanced_dock)
+            self.enhanced_dock.visibilityChanged.connect(self.enhanced_visibility)
+        self.enhanced_dock.show();self.enhanced_dock.raise_()
+        self.enhanced_visibility(True)
+        if self.session and self.session.process.state()==QProcess.ProcessState.Starting:
+            self.session.ready.connect(self.enhanced_tools.refresh_context)
+        else:self.enhanced_tools.refresh_context()
+
+    def enhanced_visibility(self,visible):
+        self.save_preferences()
+        if visible:
+            self.centralWidget().setMaximumWidth(560)
+            self.resize(min(self.screen().availableGeometry().width(),1400),self.height())
+        else:
+            self.centralWidget().setMaximumWidth(16777215)
+            self.enhanced_tools.save()
+            QTimer.singleShot(0,self.fit_calculator)
 
     def open_backups(self):
         from .rom_tools import BackupDialog
@@ -503,7 +533,7 @@ class RomWindow(QMainWindow):
         QApplication.clipboard().setImage(image.copy());self.status.setText('LCD image copied.')
 
     def save_preferences(self):
-        atomic_bytes(self.directory/'desktop.json',json.dumps({'sound':self.audio.enabled,'volume':self.audio.volume,'background':self.background.enabled,'speed':self.speed,'entry_panel':self.entry_toggle.isChecked()}).encode())
+        atomic_bytes(self.directory/'desktop.json',json.dumps({'sound':self.audio.enabled,'volume':self.audio.volume,'background':self.background.enabled,'speed':self.speed,'entry_panel':self.entry_toggle.isChecked(),'enhanced_tools':hasattr(self,'enhanced_dock') and not self.enhanced_dock.isHidden()}).encode())
 
     def set_sound(self,enabled):
         self.audio.set_enabled(enabled)
@@ -556,6 +586,9 @@ class RomWindow(QMainWindow):
         self.done=True;self.close()
 
     def closeEvent(self,event):
+        if hasattr(self,'enhanced_tools'):
+            if not self.enhanced_tools.save():event.ignore();return
+            self.enhanced_tools.shutdown()
         if self.background.enabled and not self.background.exiting and not self.done:
             if not self.save_draft():event.ignore();return
             event.ignore();self.hide();self.background.notify('Calculator running in background','Alarms remain active. Use the tray menu to reopen or Save and quit.');return

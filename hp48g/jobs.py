@@ -49,7 +49,7 @@ class JobRunner(QObject):
         process.finished.connect(finished); process.errorOccurred.connect(failed)
         request=json.dumps({'kind':kind,'payload':payload}).encode()
         process.started.connect(lambda:(process.write(request),process.closeWriteChannel()))
-        process.start(sys.executable,['-m','hp48g.worker']); self.timer.start(30000)
+        process.start(sys.executable,['--worker'] if getattr(sys,'frozen',False) else ['-m','hp48g.worker']); self.timer.start(30000)
         return True
 
     def cancel(self,message='Calculation cancelled; your inputs were kept'):

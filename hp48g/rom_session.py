@@ -179,7 +179,7 @@ class RomSession(QObject):
         if self.querying:raise ValueError('Wait for the desktop operation to finish')
         self.push(execution_object(source), evaluate=True, completed=completed)
 
-    def query(self, source, callback):
+    def query(self, source, callback, keep_result=False):
         """Run one ROM query/action on an isolated stack, then consume its reply."""
         if self.querying or self.transferring or self.closing:
             callback(None,'Calculator is busy with another desktop operation');return
@@ -187,6 +187,8 @@ class RomSession(QObject):
         def finish(value=None,error=None):
             self.querying=False;callback(value,error)
         def taken(reply):
+            if reply.get('message')=='Wait until the calculator is idle' and time.monotonic()<deadline:
+                QTimer.singleShot(60,poll);return
             try:
                 if not reply.get('ok'):raise ValueError(reply.get('message','Query failed'))
                 packet=decode_value(reply['value'])
@@ -207,9 +209,16 @@ class RomSession(QObject):
             else:QTimer.singleShot(60,poll)
         def poll():self.request('STATUS',callback=status)
         def pushed(reply):
+            if reply.get('message')=='Wait until the calculator is idle' and time.monotonic()<deadline:
+                QTimer.singleShot(60,submit);return
             if not reply.get('ok'):finish(error=reply.get('message','Query failed'));return
             self.tap(14);QTimer.singleShot(250,poll)
-        try:self.request('PUSH',execution_object(query_source(source,token)),pushed)
+        def submit():
+            if self.closing:finish(error='Calculator is closing');return
+            self.request('PUSH',packet,pushed)
+        try:
+            packet=execution_object(query_source(source,token,keep_result))
+            submit()
         except Exception as exc:finish(error=str(exc))
 
 

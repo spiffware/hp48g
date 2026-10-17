@@ -140,11 +140,12 @@ def quote_text(text):
     return '"'+text.replace('\\','\\\\').replace('"','\\"')+'"'
 
 
-def query_source(source,token=None):
+def query_source(source,token=None,keep_result=False):
     # Preserve every user stack level even when the inspected command fails.
     import uuid
     saved='desktop'+uuid.uuid4().hex;result='desktop'+uuid.uuid4().hex
     if callable(source):source=source(saved)
     packet=f'"{token}" 3 →LIST' if token is not None else '2 →LIST'
+    retain=' IF DUP 2 GET THEN DUP 1 GET SWAP END' if keep_result else ''
     return (f'DEPTH →LIST → {saved} « IFERR {source} 1 {packet} '
-            f'THEN CLEAR ERRM 0 {packet} END → {result} « CLEAR {saved} LIST→ DROP {result} » »')
+            f'THEN CLEAR ERRM 0 {packet} END → {result} « CLEAR {saved} LIST→ DROP {result}{retain} » »')

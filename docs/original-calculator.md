@@ -1,11 +1,11 @@
-# Original HP 48GX mode
+# HP 48GX calculator
 
-Open **Calculator → Original HP 48GX (ROM)** in the desktop application.
+Launch the desktop application with `python -m hp48g`.
 This window runs an original HP 48 ROM on the x48ng Saturn processor core.
 Supported images are GX revisions K, L, M, P and R, and SX revision J. Each
 profile has its own ROM, memory, cards, editor drafts and reminders.
 Python and PySide6 provide the window, keyboard, file transfer and saved sessions.
-The enhanced Python workspace keeps its own stack and exact symbolic arithmetic.
+Enhanced tools retain exact host results for explicit transfer to the HP stack.
 
 ## Setup
 
@@ -36,6 +36,11 @@ Both choices and all RAM/card contents persist in the profile's `calculator.hp48
 Working memory is shared by programs, variables, the stack and temporary results; usable free space is less than 256 KB. The 4 MB card is separate storage (ROM-accessible ports 2–32, 3,968 KB usable), not additional working memory. For example, `123 :2:VALUE STO` stores an object and `:2:VALUE RCL` recalls it; use other ports through 32 for additional storage. Desktop inspection operations also need temporary working space. These GX shortcuts do not apply to SX profiles; use the card controls for SX's supported capacities.
 
 ## Using the calculator
+
+Choose **Tools → Enhanced tools** to open Python mathematics, graphing, statistics,
+units and solvers alongside the HP face. Tools read selected HP stack values and
+return compatible results explicitly; there is no second calculator window.
+The ROM remains responsible for all original calculator commands and programs.
 
 The calculator face uses an HP-style charcoal case, green LCD, cream menu keys,
 and purple/teal shift legends. **Source entry & file transfer** below the keypad
@@ -75,7 +80,7 @@ commands. No translation to Python is involved. Source files use UTF-8.
 **Save memory**, automatic recovery points, and closing the window checkpoint CPU, RAM and cards together,
 using an atomic replacement of `calculator.hp48state` in the profile directory.
 Only one window may own a profile. The HP stack, directories, flags and libraries
-are independent of the enhanced workspace JSON file. Keep a copy of the
+are independent of the enhanced-tools JSON file. Keep a copy of the
 checkpoint for backups. The backup tool saves the current state and safely
 restarts the calculator when restoring a snapshot.
 
@@ -172,7 +177,7 @@ frequency and duration directly.
 
 Original mode executes the ROM's command implementations, UserRPL, System RPL,
 Saturn instructions, object types, numeric rounding, system flags, menus,
-equation library and original plotting/display code. The enhanced workspace's
+equation library and original plotting/display code. The enhanced Python engine's
 command-name inventory does not limit this mode.
 
 This supports the six explicitly listed ROM images, not every HP calculator model.

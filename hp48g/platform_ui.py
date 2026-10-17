@@ -1,7 +1,7 @@
 """Native desktop identity for both bundled and Python-launched applications."""
 import sys
 
-DISPLAY_NAME = 'HP-48GX'
+DISPLAY_NAME = 'HP 48GX Calculator'
 
 
 def prepare_application_name():
@@ -10,6 +10,14 @@ def prepare_application_name():
     Keep Qt's applicationName unchanged: it identifies existing saved profiles.
     Bundle metadata changes are in memory only, never in the Python installation.
     """
+    if sys.platform == 'win32':
+        import ctypes
+        shell=ctypes.WinDLL('shell32')
+        identity=shell.SetCurrentProcessExplicitAppUserModelID
+        identity.argtypes=[ctypes.c_wchar_p];identity.restype=ctypes.c_long
+        result=identity('org.hp48g.desktop')
+        if result<0:raise OSError(f'Could not set application identity: {result:#x}')
+        return
     if sys.platform != 'darwin':
         return
     import ctypes
@@ -44,3 +52,13 @@ def prepare_application_name():
         send(process, 'setProcessName:', name, result=None)
     finally:
         send(pool, 'drain', result=None)
+
+
+def application_icon():
+    """One identity for windows, the task switcher, Dock, and tray."""
+    from pathlib import Path
+    from PySide6.QtGui import QIcon
+    assets=Path(__file__).parent/'assets'
+    icon=QIcon(str(assets/'hp48gx-icon.ico'))
+    icon.addFile(str(assets/'hp48gx-icon.png'))
+    return icon

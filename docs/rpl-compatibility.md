@@ -1,10 +1,10 @@
-> This document describes the enhanced Python workspace. For original HP ROM execution, native objects and System RPL, see [Original HP 48GX mode](original-calculator.md).
+> This document describes the Python engine used by Enhanced tools → Math. It is not the compatibility inventory for the main ROM calculator. For original HP ROM execution, native objects and System RPL, see [Original HP 48GX mode](original-calculator.md).
 
 # UserRPL compatibility
 
-This application now has a structured UserRPL interpreter. It is **not fully HP 48G compatible**. The Python engine does not run HP ROM, System RPL, Saturn machine code, or binary HP libraries.
+The enhanced math engine has a structured UserRPL interpreter. This Python interpreter is **not fully HP 48G compatible**; the main calculator runs the original ROM. The Python engine does not run HP ROM, System RPL, Saturn machine code, or binary HP libraries.
 
-Open **Programs → UserRPL editor** to edit, open, save, check, or execute UTF-8 `.rpl` text. Both `« … »` and `<< … >>` delimit programs. Opening a text file does not execute it. **Add to stack** creates a program object; `EVAL` runs it. Unfinished editor text is included in workspace saves.
+Use **Tools → Enhanced tools → Math** for explicit Python calculations. Each calculation has temporary arguments and returns tool results, rather than maintaining another calculator stack. Use **Tools → Program editor…** for original HP programs; that editor executes through the ROM. The syntax below documents the Python calculation engine only.
 
 ## Supported language and objects
 
