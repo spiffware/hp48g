@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 import json
 from PySide6.QtCore import Qt, QProcess, QStandardPaths, QRect, QSize, Signal, QTimer, QMimeData, QEvent
-from PySide6.QtGui import QImage, QPainter, QColor
+from PySide6.QtGui import QImage, QPainter, QColor, QAction
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QPlainTextEdit, QFileDialog, QMessageBox, QApplication, QInputDialog, QToolButton, QDockWidget)
 from .rom_session import RomSession
@@ -200,6 +200,11 @@ class RomWindow(QMainWindow):
         self.sound_action.toggled.connect(self.set_sound)
         sound.addAction('Volume…',self.set_volume)
         sound.addAction('Test sound',lambda:self.audio.play({'frequency':440,'duration':.25}))
+        help_menu=self.menuBar().addMenu('Help')
+        about_action=QAction('About HP 48GX Calculator',self)
+        about_action.setMenuRole(QAction.MenuRole.AboutRole)
+        about_action.triggered.connect(self.about)
+        help_menu.addAction(about_action)
         self.autosave_timer=QTimer(self);self.autosave_timer.setInterval(60000);self.autosave_timer.timeout.connect(self.autosave)
         from .rom_background import BackgroundService
         self.background=BackgroundService(self)
@@ -543,6 +548,17 @@ class RomWindow(QMainWindow):
     def set_volume(self):
         volume,ok=QInputDialog.getInt(self,'Sound volume','Volume (%)',round(self.audio.volume*100),0,100)
         if ok:self.audio.set_volume(volume/100);self.save_preferences()
+
+    def about(self):
+        from . import __version__
+        from .platform_ui import DISPLAY_NAME,application_icon
+        dialog=QMessageBox(self)
+        dialog.setWindowTitle('About '+DISPLAY_NAME)
+        dialog.setIconPixmap(application_icon().pixmap(128,128))
+        dialog.setText(DISPLAY_NAME)
+        dialog.setInformativeText(f'Created by Spiffware\nMichael Rice\nVersion {__version__}\nOctober 17, 2026')
+        dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
+        dialog.exec()
 
     def help(self):
         QMessageBox.information(self,'Original HP keyboard','The buttons are the original physical keys. A–F select the LCD menus; you can also click their labels directly on the screen.\nUse the left/right shift keys and α as on the calculator. ON cancels an operation.\nComputer keys: digits/operators, arrows, Enter, Backspace and Escape (ON). F1–F6 select menus; F7/F8 shift; F9 alpha. Letters press their corresponding physical keys. Click the LCD to leave the text editor.\nText is parsed by HP’s ROM; use original HP syntax and « » program delimiters. Binary imports go to stack level 1.\nMemory saves automatically when this window closes. This calculator has its own stack, settings, directories and two 128 KB RAM cards. The enhanced Python workspace is separate.')

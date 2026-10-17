@@ -9,6 +9,7 @@ import sys
 
 def source_bundle():
     from .platform_ui import DISPLAY_NAME
+    from . import __version__
     root=Path(__file__).resolve().parent.parent
     contents=root/'build'/f'{DISPLAY_NAME}.app'/'Contents'
     binary=contents/'MacOS'/'hp48gx-python'
@@ -32,7 +33,7 @@ def source_bundle():
     info={'CFBundleName':DISPLAY_NAME,'CFBundleDisplayName':DISPLAY_NAME,
           'CFBundleIdentifier':'org.hp48g.desktop','CFBundleExecutable':DISPLAY_NAME,
           'CFBundlePackageType':'APPL','CFBundleIconFile':'hp48gx.icns',
-          'CFBundleVersion':'1','CFBundleShortVersionString':'0.1.0','NSHighResolutionCapable':True}
+          'CFBundleVersion':__version__,'CFBundleShortVersionString':__version__,'NSHighResolutionCapable':True}
     with (contents/'Info.plist').open('wb') as stream:plistlib.dump(info,stream)
     return binary
 
